@@ -242,7 +242,17 @@ def broadcast_add(a, b):
     """偏置专用广播加：b 形状为 (F,) / (1,F) / (1,F,1,1)，自动广播到 a。
 
     反向与 add 相同：对 b 的梯度沿所有广播轴求和（unbroadcast 完成）。
+
+    特例：当 a 是 (N,C,H,W) 而 b 是 (F,) 时，按"通道偏置"语义把 b
+    视作 (1,F,1,1)。numpy 原生广播会把 (F,) 对齐到最后一维 W，
+    这不是我们想要的神经网络语义，所以这里显式 reshape。
     """
+    a, b = _as_node(a), _as_node(b)
+    # (F,) + 4D 卷积特征图 -> (1,F,1,1)，与通道维对齐
+    if b.data.ndim == 1 and a.data.ndim > 2:
+        target_shape = [1] * a.data.ndim
+        target_shape[1] = b.data.shape[0]      # 第 1 维是通道维 C
+        b = reshape(b, tuple(target_shape))     # reshape 自带反向，偏置梯度可回传
     return _broadcast_add_impl(a, b, 'BroadcastAdd')
 
 
@@ -702,7 +712,9 @@ def mean(x, axis=None, keepdims=False):
     def _backward():
         if x.requires_grad:
             # 均值 = 求和 / n -> 偏导 1/n；n = 输入元素数 / 输出元素数
-            n = x.data.size // max(out.data.size, 1)
+            # 注意：本模块定义了同名算子 max/sum，会遮蔽 Python 内置函数，
+            #       所以这里用条件表达式代替 max(out.data.size, 1)。
+            n = x.data.size // (out.data.size if out.data.size > 0 else 1)
             x.grad += _expand_reduced_grad(out.grad, x.data.shape,
                                            axis, keepdims) / n
     out._backward = _backward

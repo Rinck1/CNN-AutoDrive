@@ -36,16 +36,19 @@ def set_seed(seed):
     np.random.seed(seed)                                    # numpy 全局随机源
 
 
-def accuracy(logits_or_preds, y):
+def accuracy(logits_or_preds, y, threshold=0.5):
     """计算分类准确率。
 
     自动识别输入形式：
-        - 二维及以上且第 1 维 > 1（如 logits (N,C)）：按 argmax 取预测类别；
-        - 一维（或第 1 维 == 1）：按 阈值 0.5 判正类（配合 BCEWithLogitsLoss）。
+        - 二维及以上且最后一维 > 1（如 logits (N,C)）：按 argmax 取预测类别；
+        - 一维（或最后一维 == 1）：按阈值判正类。
 
     参数：
         logits_or_preds (np.ndarray): 模型原始输出或已算好的预测类别；
-        y (np.ndarray): 真实整数标签 (N,)。
+        y (np.ndarray): 真实整数标签 (N,)；
+        threshold (float): 单输出时的判定阈值。默认 0.5 适用于"概率"输出；
+            若模型输出的是 logits（配合 BCEWithLogitsLoss），应传 0.0
+            （sigmoid(logit) > 0.5 等价于 logit > 0）。
 
     返回：
         float: 准确率（0~1）。
@@ -54,8 +57,8 @@ def accuracy(logits_or_preds, y):
     yy = np.asarray(y).ravel()                              # 展平真实标签
     if arr.ndim > 1 and arr.shape[-1] > 1:                  # 多维输出 -> argmax 分类
         preds = arr.reshape(-1, arr.shape[-1]).argmax(axis=1)
-    else:                                                   # 一维输出 -> 0.5 阈值二分类
-        preds = (arr.ravel() > 0.5).astype(np.int64)
+    else:                                                   # 单输出 -> 阈值二分类
+        preds = (arr.ravel() > threshold).astype(np.int64)
     return float(np.mean(preds == yy))                      # 命中率均值
 
 

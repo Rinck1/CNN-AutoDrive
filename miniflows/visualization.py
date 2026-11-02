@@ -115,8 +115,8 @@ def _node_shape_str(node):
     if shape is None:                                       # 鸭子类型退化：直接看 data
         data = getattr(node, "data", None)
         shape = getattr(data, "shape", ())
-    if shape == () or shape is None:                        # 标量节点显示 '()' 即可读
-        return "()" if shape == () else "-"
+    if shape == () or shape is None:                        # 标量节点用中文标注更直观
+        return "标量" if shape == () else "-"
     return "x".join(str(int(d)) for d in tuple(shape)) if len(tuple(shape)) else "()"
 
 
@@ -258,8 +258,15 @@ def draw_computation_graph(root, path, title="计算图", max_nodes=200, figsize
     ax.set_title(f"{title}（节点 {len(nodes)} 个，边 {len(edges)} 条）", fontsize=12)
     ax.set_xlabel("拓扑深度（左=输入，右=输出）")            # x 轴语义说明
     ax.set_yticks([])                                       # y 只用于分层排布，无实际含义
-    ax.autoscale_view()
-    ax.margins(0.08)
+    # 关键：本图只用 text/annotate 绘制，没有参与自动缩放的 Line2D/PathPatch，
+    # matplotlib 会把坐标范围留成默认的 (-0.055, 0.055)，导致所有文本落在视口外，
+    # bbox_inches="tight" 为了包含它们会把画布撑到上百英寸（PNG 高达上万像素）。
+    # 因此必须根据节点坐标显式设定坐标范围。
+    xs = [x for x, _ in pos.values()]
+    ys = [y for _, y in pos.values()]
+    ax.set_xlim(min(xs) - 1.0, max(xs) + 1.0)               # 左右各留 1 个节点的余量
+    ax.set_ylim(min(ys) - 0.9, max(ys) + 1.4)               # 顶部多留空间给图例
+    ax.set_aspect('auto')
 
     os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)  # 保证输出目录存在
     fig.savefig(path, dpi=150, bbox_inches="tight")         # 保存 PNG
@@ -372,8 +379,10 @@ def plot_images_grid(images, titles=None, path=None, n=8, cols=4):
         if i < n_show:
             # 灰度 cmap 显示；0~1 float 直接显示即可
             ax.imshow(imgs[i], cmap="gray")
-            if titles is not None and i < len(titles):      # 图下方标题
-                ax.set_xlabel(str(titles[i]), fontsize=8)
+            if titles is not None and i < len(titles):
+                # 注意：ax.axis("off") 会把 xlabel 一并隐藏，所以标题必须用
+                # set_title（标题不属于坐标轴装饰，关闭坐标轴后仍会显示）。
+                ax.set_title(str(titles[i]), fontsize=8, pad=3)
     if path is not None:                                    # 需要保存时
         os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
         fig.savefig(path, dpi=150, bbox_inches="tight")

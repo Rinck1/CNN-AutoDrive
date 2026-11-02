@@ -101,6 +101,11 @@ class BCEWithLogitsLoss:
         logits = logits if isinstance(logits, Node) else constant(logits)
         z = logits.data
         t = np.asarray(target01, dtype=np.float64)
+        # 关键：logits 为 (N,1)、标签为 (N,) 时，二者是"逐样本对应"关系，
+        # 必须先把标签补成 (N,1)。否则 numpy 会广播成 (N,N) 的笛卡尔组合，
+        # 损失值和反向梯度都会完全错误（这是一个很隐蔽的广播陷阱）。
+        if z.ndim == 2 and z.shape[1] == 1 and t.shape == (z.shape[0],):
+            t = t.reshape(-1, 1)
         # 广播对齐 z 与 t（允许 (N,1) 与 (N,) 之类的组合）
         zb, tb = np.broadcast_arrays(z, t)
         n = zb.size                                # 求均值的元素总数

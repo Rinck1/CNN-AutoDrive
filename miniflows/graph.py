@@ -60,6 +60,12 @@ class Node:
         参数名 / 调试名（参数保存、可视化、summary 都会用到）。
     """
 
+    # numpy 与 Node 混算时的优先级：数值越大，numpy 越倾向于让出运算权。
+    # 没有这一行时，`np.ones((2,2)) - node` 会被 numpy 当作"逐元素对象数组"
+    # 处理，结果是装满 Node 的 object ndarray 而不是一个 Node；
+    # 设为 1000 后 numpy 直接调用 Node.__rsub__，得到正确的计算图节点。
+    __array_priority__ = 1000
+
     def __init__(self, data, requires_grad=False, name=None):
         """构造节点。
 

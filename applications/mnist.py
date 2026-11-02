@@ -232,8 +232,10 @@ def main():
     X_show = X_test[:n_show]                          # (8,1,28,28) 测试图像
     y_pred = trainer.predict_classes(X_show)          # argmax 预测类别
     y_true = y_test[:n_show].astype(int)
-    titles = [f'真:{t} 预:{p}' + ('✓' if t == p else '✗')
-              for t, p in zip(y_true, np.asarray(y_pred).reshape(-1))]  # 每张图下方标题
+    # 标题用中文"对/错"：微软雅黑等中文字体不含 ✓/✗（U+2713/2717），
+    # 直接使用会在图上显示成缺字方块。
+    titles = [f'真:{t} 预:{p}' + ('(对)' if t == p else '(错)')
+              for t, p in zip(y_true, np.asarray(y_pred).reshape(-1))]  # 每张图上方标题
     path_grid = os.path.join(OUT_DIR, '预测示例.png')
     plot_images_grid(X_show, titles=titles, path=path_grid, n=n_show, cols=4)
     print(f'已保存预测示例图：{path_grid}')

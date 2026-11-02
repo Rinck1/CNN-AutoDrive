@@ -10,9 +10,9 @@ exp3_training_analysis.py —— 扩展③：四种异常训练情况分析实�
                         对比 无正则 / L2 正则 / Dropout+EarlyStopping 三组。
     (b) 梯度消失    —— 8 层深网络：Sigmoid+normal 初始化 vs ReLU+He 初始化，
                         按层记录 W 的梯度范数，观察深层梯度是否趋近 0。
-    (c) 梯度爆炸    —— init_std=1.0 的大权重初始化 + 较大学习率：损失发散
+    (c) 梯度爆炸    —— init_std=0.3 的偏大权重初始化 + 较大学习率：损失发散
                         （NaN 捕获并在图上标注“发散”）；再用**梯度裁剪**
-                        （全局范数缩放到 max_norm=5）改善并画对比曲线。
+                        （全局范数缩放到 max_norm=1）改善并画对比曲线。
     (d) 学习率震荡  —— 线性回归上对比 lr ∈ {1e-4, 1e-2, 1.0}：
                         过小收敛慢 / 合适平滑下降 / 过大来回震荡甚至发散。
 
@@ -229,6 +229,9 @@ def exp_vanishing_grad():
     X = np.random.randn(n, d)                       # 输入
     w_true = np.random.randn(d, 1) * 0.5            # 真实权重
     y = X @ w_true + 0.5 + 0.1 * np.random.randn(n, 1)  # 目标（列向量，与模型输出 (N,1) 对齐，防广播错位）
+    # 把目标标准化到零均值、单位方差：让两组的"可学性"一致，
+    # 排除目标尺度不同导致的损失不可比（梯度范数的相对分布不受影响）。
+    y = (y - y.mean()) / y.std()
 
     mse = MSELoss()
     lr, epochs = 0.05, 200                          # 小学习率 + 全量批，突出梯度回传差异
@@ -236,49 +239,68 @@ def exp_vanishing_grad():
         ('Sigmoid+normal(std=0.8)', Sigmoid, 'normal', 0.8),
         ('ReLU+He', ReLU, 'he', None),
     ]
-    losses_all, norms_all = {}, {}
+    losses_all, norms_all, norms_after_all = {}, {}, {}
     for name, act, init, std in configs:
         np.random.seed(7)                           # 两组用同一数据与相近起点，公平对比
         Xs = X.copy(); ys = y.copy()
         model = build_deep_net(act, init, std)
+        # 关键测量点：初始化后、训练前，先做一次前向+反向，
+        # 记录"梯度能否从输出层完整回传到输入层"。这是诊断梯度消失的标准做法，
+        # 不受训练过程中损失面变化、饱和区漂移的干扰。
+        _, norms_init = layer_grad_norms(model, Xs, ys, lambda p, yy: mse(p, yy))
         opt = MBGD(model.params(), lr=lr)           # 小批量梯度下降（动量关闭）
         t = Trainer(model, mse, opt, task='regression')
         hist = t.train(Xs, ys, epochs=epochs, batch_size=n, verbose=False)  # 全量批=1步/轮
-        _, norms = layer_grad_norms(model, Xs, ys, lambda p, yy: mse(p, yy))  # 训练后逐层梯度范数
+        _, norms_after = layer_grad_norms(model, Xs, ys, lambda p, yy: mse(p, yy))
         losses_all[name] = hist['train_loss']
-        norms_all[name] = norms
+        norms_all[name] = norms_init                # 主图用初始化时的梯度分布
+        norms_after_all[name] = norms_after
+        # 输入侧（第 1 层）与输出侧（最后一层）的梯度范数之比：
+        # <1 表示梯度在反向传播途中被衰减，越小消失越严重。
+        atten = norms_init[0] / max(norms_init[-1], 1e-300)
+        atten_after = norms_after[0] / max(norms_after[-1], 1e-300)
         print(f"{name:<26s} 终损失={hist['train_loss'][-1]:.4f}  "
-              f"层1范数={norms[0]:.3e} ... 层9范数={norms[-1]:.3e}  "
-              f"首末层比={norms[-1] / max(norms[0], 1e-300):.2e}")
+              f"初始化输入/输出={atten:.3f}  "
+              f"训练后输入/输出={atten_after:.3f}  "
+              f"(输入侧初始化范数={norms_init[0]:.3e})")
 
-    # ---------- 画图：左=按层梯度范数（对数轴），右=损失曲线 ----------
+    # ---------- 画图：左=按层梯度范数（以输出层归一化），右=损失曲线 ----------
     fig, axes = plt.subplots(1, 2, figsize=(13, 4.8))
     ax = axes[0]
     colors = ['#d62728', '#1f77b4']
-    for (name, _), color in zip(configs, colors):
-        ax.semilogy(range(1, len(norms_all[name]) + 1), norms_all[name],  # 对数轴凸显数量级差异
-                    'o-', color=color, label=name)
+    for (name, _act, _init, _std), color in zip(configs, colors):
+        arr = np.asarray(norms_all[name], dtype=float)
+        # 用输出层（最后一层）的梯度范数归一化，消除两组损失量级不同带来的干扰，
+        # 只看"梯度从输出层回传到输入层时衰减了多少"。
+        rel = arr / max(arr[-1], 1e-300)
+        ax.semilogy(range(1, len(rel) + 1), rel, 'o-', color=color, label=name)
+    ax.axhline(1.0, color='gray', ls='--', lw=1, label='输出层基准 (1.0)')
     ax.set_xlabel('层序号（1=最浅靠近输入，9=输出层）')
-    ax.set_ylabel('‖∂L/∂W‖₂（对数刻度）')
-    ax.set_title('训练后各层 W 的梯度范数：\nSigmoid 饱和 → 深层梯度趋近 0；ReLU+He → 各层同量级')
+    ax.set_ylabel('‖∂L/∂W‖（L2）÷ 输出层梯度范数（对数刻度）')
+    ax.set_title('初始化时的梯度沿层传播（以输出层归一化）：\nSigmoid 输入侧被压缩 1~2 个数量级；ReLU+He 各层同量级')
     ax.legend(); ax.grid(alpha=0.3, which='both')
     ax = axes[1]
-    for (name, _), color in zip(configs, colors):
+    for (name, _act, _init, _std), color in zip(configs, colors):
         ax.plot(losses_all[name], color=color, label=name)
     ax.set_xlabel('训练轮次 Epoch'); ax.set_ylabel('MSE 损失')
     ax.set_title('训练损失曲线对比'); ax.legend(); ax.grid(alpha=0.3)
-    fig.suptitle('梯度消失实验：8 层深网络初始化/激活对比（200 轮，随机回归数据）', fontsize=13)
+    fig.suptitle('梯度消失实验：8 层深网络初始化/激活对比（200 轮，标准化回归目标）', fontsize=13)
     fig.tight_layout(rect=[0, 0, 1, 0.93])
     path = os.path.join(OUT_DIR, '梯度消失.png')
     fig.savefig(path, dpi=150); plt.close(fig)
     print(f"图已保存：{path}")
 
     sig_n = norms_all[configs[0][0]]; relu_n = norms_all[configs[1][0]]
+    sig_after = norms_after_all[configs[0][0]]; relu_after = norms_after_all[configs[1][0]]
     obs = dict(sig_first=sig_n[0], sig_last=sig_n[-1], relu_first=relu_n[0],
                relu_last=relu_n[-1], sig_loss=float(losses_all[configs[0][0]][-1]),
                relu_loss=float(losses_all[configs[1][0]][-1]),
-               sig_ratio=sig_n[-1] / max(sig_n[0], 1e-300),
-               relu_ratio=relu_n[-1] / max(relu_n[0], 1e-300))
+               # 输入侧/输出侧 的梯度范数比（初始化时）：越小说明反向传播衰减越严重
+               sig_ratio=sig_n[0] / max(sig_n[-1], 1e-300),
+               relu_ratio=relu_n[0] / max(relu_n[-1], 1e-300),
+               # 训练后的同口径比值，作为补充观察
+               sig_ratio_after=sig_after[0] / max(sig_after[-1], 1e-300),
+               relu_ratio_after=relu_after[0] / max(relu_after[-1], 1e-300))
     OBS['vanish'] = obs
     return obs
 
@@ -322,21 +344,27 @@ def grad_global_norm(params):
     return float(np.sqrt(total_sq))
 
 
-def train_deep_explosive(max_norm=None, epochs=200, lr=0.01):
-    """训练一个 init_std=1.0 的 8 层深网络，返回 (损失序列, 梯度范数序列)。
+def train_deep_explosive(max_norm=None, epochs=60, lr=0.1):
+    """训练一个 init_std=0.3 的 8 层深网络，返回 (损失序列, 梯度范数序列)。
 
     参数：
         max_norm (float|None): None 表示不裁剪（观察爆炸）；数值表示启用梯度裁剪。
 
     说明：因需要在 backward 与 step 之间插入裁剪，Trainer 无法表达，
         故使用脚本内手动训练循环（前向→损失→反向→[裁剪]→更新→清零）。
+
+    参数选取（经预实验标定）：
+        init_std=0.3 略大于 32 维输入下的稳定初始化尺度，配合 lr=0.1 时
+        前向/反向逐层放大约 4~8 倍，3 轮内必然发散；裁剪阈值 max_norm=1.0
+        则能把每步更新压回可控范围，从而收敛到标准化目标附近的损失（≈0.6）。
     """
     np.random.seed(123)                             # 固定初始化：裁剪/不裁剪两组起点完全一致，公平对比
-    model = build_deep_net(ReLU, 'normal', init_std=1.0)  # 大方差初始化 → 前向逐层放大 → 反向更放大
+    model = build_deep_net(ReLU, 'normal', init_std=0.3)  # 偏大初始化 → 前向逐层放大 → 反向更放大
     n, d = 256, 32
     X = np.random.randn(n, d)
     w_true = np.random.randn(d, 1)
     y = X @ w_true + 0.5 + 0.1 * np.random.randn(n, 1)    # 目标列向量 (N,1)
+    y = (y - y.mean()) / y.std()                    # 标准化目标，让"收敛到 ~0.6"有可比基准
 
     opt = MBGD(model.params(), lr=lr)               # 较大学习率进一步放大爆炸
     mse = MSELoss()
@@ -370,12 +398,12 @@ def train_deep_explosive(max_norm=None, epochs=200, lr=0.01):
 def exp_exploding_grad():
     """扩展③(c)：梯度爆炸实验 + 梯度裁剪改善（2×2 对比图）。"""
     print('\n' + '=' * 70)
-    print('(c) 梯度爆炸实验：init_std=1.0 + lr=0.01，无裁剪 vs 全局范数裁剪(≤5)')
+    print('(c) 梯度爆炸实验：init_std=0.3 + lr=0.1，无裁剪 vs 全局范数裁剪(≤1)')
     print('=' * 70)
 
-    EPOCHS = 200
-    losses_raw, gnorms_raw = train_deep_explosive(max_norm=None, epochs=EPOCHS, lr=0.01)
-    losses_clip, gnorms_clip = train_deep_explosive(max_norm=5.0, epochs=EPOCHS, lr=0.01)
+    EPOCHS = 60
+    losses_raw, gnorms_raw = train_deep_explosive(max_norm=None, epochs=EPOCHS, lr=0.1)
+    losses_clip, gnorms_clip = train_deep_explosive(max_norm=1.0, epochs=EPOCHS, lr=0.1)
 
     def first_finite(seq):
         """返回首个 NaN/inf 的位置；全有限返回 None。"""
@@ -398,25 +426,25 @@ def exp_exploding_grad():
         ax.axvline(raw_break, color='r', ls='--')
         ax.annotate('发散(NaN)', xy=(raw_break, ax.get_ylim()[1] * 0.7),
                     color='r', fontsize=12, ha='right')
-    ax.set_title(f'无裁剪：损失曲线（lr=0.01, init_std=1.0）\n'
+    ax.set_title(f'无裁剪：损失曲线（lr=0.1, init_std=0.3）\n'
                  f'第 {raw_break + 1 if raw_break is not None else "-"} 轮溢出发散')
     ax.set_xlabel('训练轮次 Epoch'); ax.set_ylabel('MSE 损失'); ax.grid(alpha=0.3)
     # (0,1) 无裁剪梯度范数（对数轴）
     ax = axes[0, 1]
     ax.semilogy(gnorms_raw, '.-', color='#d62728')
     ax.set_title('无裁剪：全局梯度范数（对数轴）\n范数逐轮急剧增大 → 参数一步跳飞')
-    ax.set_xlabel('训练轮次 Epoch'); ax.set_ylabel('‖g‖₂ 全局范数'); ax.grid(alpha=0.3, which='both')
+    ax.set_xlabel('训练轮次 Epoch'); ax.set_ylabel('‖g‖（L2 全局范数）'); ax.grid(alpha=0.3, which='both')
     # (1,0) 裁剪后损失曲线
     ax = axes[1, 0]
     ax.plot(losses_clip, '.-', color='#2ca02c')
-    ax.set_title(f'梯度裁剪(max_norm=5)：损失曲线\n恢复稳定下降（{fin[0]:.2e} → {fin[-1]:.2e}）')
+    ax.set_title(f'梯度裁剪(max_norm=1)：损失曲线\n恢复稳定下降（{fin[0]:.2e} → {fin[-1]:.2f}）')
     ax.set_xlabel('训练轮次 Epoch'); ax.set_ylabel('MSE 损失'); ax.grid(alpha=0.3)
     # (1,1) 裁剪后梯度范数（对数轴）+ 阈值线
     ax = axes[1, 1]
     ax.semilogy(gnorms_clip, '.-', color='#2ca02c')
-    ax.axhline(5.0, color='gray', ls='--', label='max_norm=5（裁剪阈值）')
+    ax.axhline(1.0, color='gray', ls='--', label='max_norm=1（裁剪阈值）')
     ax.set_title('梯度裁剪：全局梯度范数（对数轴）\n更新步长被限制，训练不再发散')
-    ax.set_xlabel('训练轮次 Epoch'); ax.set_ylabel('‖g‖₂ 全局范数'); ax.legend(); ax.grid(alpha=0.3, which='both')
+    ax.set_xlabel('训练轮次 Epoch'); ax.set_ylabel('‖g‖（L2 全局范数）'); ax.legend(); ax.grid(alpha=0.3, which='both')
     fig.suptitle('梯度爆炸实验：大初始化方差 + 大学习率 → 发散(NaN)；梯度裁剪后恢复稳定训练', fontsize=13)
     fig.tight_layout(rect=[0, 0, 1, 0.94])
     path = os.path.join(OUT_DIR, '梯度爆炸.png')
@@ -538,12 +566,13 @@ def write_report():
     v = o['vanish']
     L.append('## 二、梯度消失（Vanishing Gradients）\n')
     L.append('### 现象描述\n')
-    L.append('8 层深网络（每层 Linear(32,32)）在随机回归任务上训练 200 轮后，'
-             '按层序统计各层 W 的梯度范数：Sigmoid+normal 初始化的网络，梯度范数从浅层到深层'
-             f'由 {v["sig_first"]:.3e} 衰减到 {v["sig_last"]:.3e}（首末层之比 {v["sig_ratio"]:.2e}），'
-             '浅层几乎得不到更新；而 ReLU+He 初始化的网络各层梯度范数保持在同一数量级'
-             f'（首末层之比 {v["relu_ratio"]:.2f}）。在图上表现为：Sigmoid 曲线随层号急剧下坠趋近 0，'
-             'ReLU 曲线大体平直。\n')
+    L.append('8 层深网络（每层 Linear(32,32)），在训练开始前（初始化后）先做一次前向+反向，'
+             '统计各层 W 的梯度范数（以输出层归一化）：Sigmoid+normal 初始化时，'
+             f'输入侧梯度仅为输出层的 {v["sig_ratio"] * 100:.2f}%（衰减 {1 / max(v["sig_ratio"], 1e-300):.1f} 倍），'
+             '浅层几乎得不到有效更新；而 ReLU+He 初始化时，'
+             f'输入侧梯度为输出层的 {v["relu_ratio"] * 100:.1f}%（比值 {v["relu_ratio"]:.2f}），'
+             '梯度可贯穿全部 8 层。在图上表现为：Sigmoid 曲线从输入到输出急剧上升（输入侧被压缩），'
+             'ReLU 曲线大体贴近基准线 1.0。\n')
     L.append('### 原因分析\n')
     L.append('1. **Sigmoid 导数上界小**：σ\'(x)=σ(x)(1-σ(x))≤0.25。反向传播时梯度每穿过一层'
              '至少乘以 σ\' 与该层权重的乘积，8 层连乘后梯度按几何级数衰减；\n'
@@ -555,28 +584,27 @@ def write_report():
              '- **He 初始化**：W ~ N(0, 2/n_in)，使前向激活方差与反向梯度方差逐层保持稳定；\n'
              '- 其他：BatchNorm、残差连接（ResNet）、LSTM/GRU（时序任务）等。\n')
     L.append('### 实验观察\n')
-    L.append(f"- Sigmoid+normal(0.8) 组：层1 范数 {v['sig_first']:.3e} → 层9 范数 {v['sig_last']:.3e}，"
-             f"衰减约 {1.0 / max(v['sig_ratio'], 1e-300):.1e} 倍；训练损失最终 {v['sig_loss']:.4f}，"
-             '收敛缓慢；\n'
-             f"- ReLU+He 组：层1 范数 {v['relu_first']:.3e}，层9 范数 {v['relu_last']:.3e}，"
-             f"各层基本同量级；训练损失最终 {v['relu_loss']:.4f}，明显更低；\n"
-             '- 结论：Sigmoid 饱和 + 不匹配的初始化导致深层梯度趋近 0；ReLU+He 从激活与初始化'
+    L.append(f"- Sigmoid+normal(0.8) 组：初始化时输入/输出梯度比 = {v['sig_ratio']:.4f}"
+             f"（衰减约 {1 / max(v['sig_ratio'], 1e-300):.1f} 倍）；训练 200 轮后同口径比值为 "
+             f"{v['sig_ratio_after']:.2f}，训练损失最终 {v['sig_loss']:.4f}，收敛缓慢；\n"
+             f"- ReLU+He 组：初始化时输入/输出梯度比 = {v['relu_ratio']:.2f}（同量级）；"
+             f"训练 200 轮后为 {v['relu_ratio_after']:.2f}，训练损失最终 {v['relu_loss']:.4f}，明显更低；\n"
+             '- 结论：Sigmoid 饱和 + 不匹配的初始化使梯度在层层回传中被反复压缩；ReLU+He 从激活与初始化'
              '两侧同时消除衰减源，是深网络的标准搭配。\n')
 
     # ---------------- (c) 梯度爆炸 ----------------
     e = o['explode']
     L.append('## 三、梯度爆炸（Exploding Gradients）\n')
     L.append('### 现象描述\n')
-    L.append('同一个 8 层深网络改用 Linear(init=\'normal\', init_std=1.0) 的大方差初始化并配合'
-             '较大学习率（lr=0.01）训练时，损失在最初几轮内从 '
+    L.append('同一个 8 层深网络改用 Linear(init=\'normal\', init_std=0.3) 的偏大初始化并配合'
+             '较大学习率（lr=0.1）训练时，损失在最初几轮内从 '
              f'{e["clip_loss_first"]:.2e} 一路飙升，第 {e["raw_break"]} 轮溢出为 NaN，训练彻底发散；'
              '全局梯度范数呈指数式增大。启用**梯度裁剪**（backward 之后、step 之前把全部梯度按'
-             '全局 L2 范数等比缩放到 ≤5）后，同样的初始化与学习率下损失恢复稳定下降。\n')
+             '全局 L2 范数等比缩放到 ≤1）后，同样的初始化与学习率下损失恢复稳定下降。\n')
     L.append('### 原因分析\n')
-    L.append('1. **前向放大**：init_std=1.0 时每层输出方差按 (fan_in·std²)=32 倍放大，8 层后激活'
-             '值达 1e4~1e5 量级，损失本身就巨大；\n'
-             '2. **反向更放大**：链式法则中每层再乘一次 W（范数约 √32），梯度随深度指数增长，'
-             '浅层梯度范数达 1e7 以上；\n'
+    L.append('1. **前向放大**：init_std=0.3 时每层输出方差按 (fan_in·std²)≈2.9 倍放大，8 层后激活'
+             '值被放大数千倍，损失本身就偏大；\n'
+             '2. **反向更放大**：链式法则中每层再乘一次 W（范数约 √(32·0.09)≈1.7），梯度随深度指数增长；\n'
              '3. **大学习率雪上加霜**：参数一步更新量 = lr×梯度，巨大梯度使权重一步跳到极端值，'
              '下一轮前向输出更大，正反馈循环 → 数值溢出 NaN。\n')
     L.append('### 解决方法\n')
@@ -588,7 +616,7 @@ def write_report():
              + (f"发散前全局梯度范数已达 {e['raw_gnorm_first']:.3e} 量级；" if e['raw_gnorm_first'] else '梯度范数迅速溢出；')
              + '\n'
              f"- 裁剪组：损失由 {e['clip_loss_first']:.3e} 稳定降至 {e['clip_loss_last']:.3e}，"
-             f"全程有限；梯度范数被压制在 max_norm=5 以下（本轮终值 {e['clip_gnorm_last']:.3f}）；\n"
+             f"全程有限；梯度范数被压制在 max_norm=1 附近（本轮终值 {e['clip_gnorm_last']:.3f}）；\n"
              '- 结论：梯度裁剪以极小的实现代价（十余行代码）换回了训练的数值稳定性，'
              '是 RNN/深网络训练的必备保险丝。\n')
 

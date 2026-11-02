@@ -175,7 +175,12 @@ class Trainer:
         if self.task == "regression":
             metric = float(np.mean((preds.ravel() - y.ravel()) ** 2))  # 回归：MSE
         else:
-            metric = accuracy(preds, y)                     # 分类：argmax / 0.5 阈值准确率
+            # 分类：多维输出走 argmax；单输出时模型给的是 logits（配合
+            # BCEWithLogitsLoss），因此阈值取 0 而不是 0.5
+            if preds.ndim > 1 and preds.shape[-1] == 1:
+                metric = accuracy(preds, y, threshold=0.0)
+            else:
+                metric = accuracy(preds, y)
         return float(avg_loss), float(metric)
 
     def predict(self, X, batch_size=256):

@@ -32,8 +32,9 @@ init_env(seed=42)  # 统一设置：随机种子 + matplotlib 中文字体 + Agg
 # ---------------------------------------------------------------------
 
 import numpy as np
+import matplotlib.pyplot as plt                              # 绘图（Agg 后端已由 init_env 设置）
 
-from miniflows.graph import param                            # 参数节点（调度实验用）
+from miniflows.graph import Node, param                     # 节点类 + 参数节点（调度实验用）
 from miniflows.layers import Sequential, Linear, ReLU, Dropout
 from miniflows.losses import MSELoss, CrossEntropyLoss
 from miniflows.optim import MBGD, Adam
@@ -285,6 +286,16 @@ def sec_d_early_stopping():
 # ======================================================================
 # 小节 e：保存 / 加载往返一致性
 # ======================================================================
+def _predict(model, X):
+    """对 Sequential 模型做一次评估模式推理，返回 numpy 预测。
+
+    说明：Sequential 本身只负责"层组合 + 前向"，不提供 predict 接口；
+    推理统一走"评估模式 + Node 包装 + 取 .data"，避免误启用 Dropout。
+    """
+    model.train_mode(False)                                  # 关闭 Dropout 等训练态行为
+    return np.asarray(model(Node(X)).data)                   # 前向并取出原始 logits
+
+
 def sec_e_save_load():
     """训练 -> save_model -> 全新模型 load_model -> 逐元素对比预测是否完全一致。"""
     print("\n" + "=" * 60)
@@ -307,10 +318,10 @@ def sec_e_save_load():
     set_seed(7)                                              # 故意用不同种子初始化模型 B
     model_b = Sequential(Linear(4, 16, name="fc1"), ReLU(),
                          Linear(16, 3, name="fc2"))
-    preds_before = model_b.predict(X_va)                     # 加载前：B 的预测（明显不同）
+    preds_before = _predict(model_b, X_va)                   # 加载前：B 的预测（明显不同）
     load_model(model_b, npz_path)                            # 按参数名对号入座原地加载
-    preds_after_b = model_b.predict(X_va)                    # 加载后：B 的预测
-    preds_a = model_a.predict(X_va)                          # 模型 A 的预测（基准）
+    preds_after_b = _predict(model_b, X_va)                  # 加载后：B 的预测
+    preds_a = _predict(model_a, X_va)                        # 模型 A 的预测（基准）
 
     # ---------- 一致性断言 + 打印对比表 ----------
     max_diff = float(np.max(np.abs(preds_a - preds_after_b)))  # 逐元素最大绝对差

@@ -141,9 +141,11 @@ def build_checks():
     ))
 
     # 3. broadcast_add：偏置专用广播加。重点检验“沿广播轴求和还原”（unbroadcast）
-    Ab = np.random.randn(2, 3, 4); bb = np.random.randn(4); Wb = np.random.randn(2, 3, 4)
+    # a 形状 (N=2, C=3, L=4)，按"通道偏置"语义 b 的长度必须等于 C=3
+    # （索引 1 是通道维），框架会把它补成 (1,3,1) 再广播。
+    Ab = np.random.randn(2, 3, 4); bb = np.random.randn(3); Wb = np.random.randn(2, 3, 4)
     checks.append(dict(
-        name='broadcast_add', desc='a:(2,3,4), b:(4,)',
+        name='broadcast_add', desc='a:(2,3,4), b:(3,)',
         arrays=[Ab, bb],
         f=lambda nd: ops.sum(ops.mul(ops.broadcast_add(nd[0], nd[1]), constant(Wb))),  # b 的梯度需沿广播轴求和
     ))

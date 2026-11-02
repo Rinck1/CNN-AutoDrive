@@ -1,0 +1,10 @@
+{
+  "framework": "miniflows",
+  "test_accuracy": 0.9285,
+  "epochs": 3,
+  "subset_train": 8000,
+  "subset_test": 2000,
+  "train_seconds": 10.9,
+  "param_count": 44426,
+  "device": "cpu"
+}

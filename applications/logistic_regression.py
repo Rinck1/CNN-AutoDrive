@@ -124,9 +124,11 @@ def main():
     print('=' * 60)
 
     # ---------- 1. 生成两团高斯簇数据 ----------
-    # centers=2 -> 两团；std=1.0 -> 团内标准差，两团相距足够远、近似线性可分
+    # centers=2 -> 两团；center_box=(-5,5) 让两团中心拉开距离，std=0.7 控制团内散度，
+    # 这样两团近似线性可分（中心距约 5，约为团内标准差的 7 倍），
+    # 逻辑回归这种线性模型才能稳定达到 95% 以上的测试准确率。
     X, y = make_blobs(n_samples=N_SAMPLES, centers=2,
-                      center_box=(-3.0, 3.0), std=1.0,
+                      center_box=(-5.0, 5.0), std=0.7,
                       n_features=N_FEATURES, seed=42)
     print(f'数据生成完成：X.shape={X.shape}, y 分布：'
           f'类0={int((y == 0).sum())} 个, 类1={int((y == 1).sum())} 个')
@@ -158,18 +160,25 @@ def main():
     print(f'测试集准确率: {test_acc * 100:.2f}%')
 
     # 提取决策边界参数 w1, w2, b 并打印边界方程
+    # 注意：Linear(in_features=2, out_features=1) 的 W 形状是 (2,1)（输入维在前），
+    # 不是 (1,2)，所以按列向量展平读取。
     w1 = w2 = b = None
     for name, p in model.named_params():  # named_params -> [('layer0.W', Node), ...]
         if name.endswith('.W'):
-            w1, w2 = float(p.data[0, 0]), float(p.data[0, 1])  # W 形状 (1,2)
+            w = p.data.ravel()                    # (2,) -> [w1, w2]
+            w1, w2 = float(w[0]), float(w[1])
         elif name.endswith('.b'):
-            b = float(p.data.reshape(-1)[0])                   # b 形状 (1,)
+            b = float(p.data.reshape(-1)[0])      # b 形状 (1,)
     print(f'决策边界方程: {w1:.4f}*x1 + {w2:.4f}*x2 + {b:.4f} = 0')
 
     # ---------- 6. 中文结论 ----------
     print('【结论】')
-    print(f'  两团高斯簇近似线性可分，逻辑回归测试准确率 {test_acc * 100:.2f}%，'
-          f'达到预期（≥95%）。')
+    if test_acc >= 0.95:
+        print(f'  两团高斯簇近似线性可分，逻辑回归测试准确率 {test_acc * 100:.2f}%，'
+              f'达到预期（≥95%）。')
+    else:
+        print(f'  逻辑回归测试准确率 {test_acc * 100:.2f}%，低于 95% 的预期目标，'
+              f'说明两团数据仍有重叠或训练尚不充分。')
     print('  说明单层线性模型 + BCEWithLogitsLoss + Adam 的组合在 MiniFlows 上'
           '能正确完成二分类任务，框架的自动微分与优化器工作正常。')
 

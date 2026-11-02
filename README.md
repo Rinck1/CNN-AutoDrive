@@ -1,8 +1,8 @@
 # MiniFlows —— 自研迷你深度学习框架 + CNN（课程综合设计）
 
-> **MiniFlows（迷你流）**：一个纯 numpy 实现反向传播自动微分的迷你深度学习框架，
-> 用它从零训练 MLP / CNN 完成鸢尾花分类、MNIST 手写数字识别等任务，
-> 并与 PyTorch 做同结构基准对比。
+> **MiniFlows（迷你流）**：一个纯 numpy 实现反向传播自动微分的迷你深度学习框架。
+> 用它从零训练 MLP / CNN，完成线性回归、逻辑回归、鸢尾花分类、MNIST 手写数字识别
+> 与 DonkeyCar 自动驾驶（模拟赛道），并与 PyTorch 做同结构基准对比。
 >
 > 仓库内**全中文注释**：每个模块文件头有说明块，每个类/函数有中文 docstring，
 > 关键代码行有行内中文注释，方便课程答辩逐行讲解。
@@ -13,19 +13,34 @@
 
 | 课程要求 | 本项目实现 | 对应位置 |
 |---|---|---|
-| 自研深度学习框架 | 计算图 `Node` + 算子闭包反向传播 + `Sequential` 容器 + `Trainer` | `miniflows/` |
-| CNN 图像分类 | LeNet-5 风格 CNN 在 MNIST 上训练（自研 numpy 实现） | `applications/`、`pytorch_benchmark/` |
-| 经典模型 | 线性回归、逻辑回归、鸢尾花 MLP | `applications/` |
-| 扩展① 计算图可视化 | 纯 matplotlib 分层 DAG 绘图（不依赖 graphviz） | `miniflows/visualization.py`、`experiments/exp1_graph_viz.py` |
-| 扩展② 梯度检验 | 数值梯度 vs 解析梯度逐元素相对误差报告 | `miniflows/autodiff.py`、`experiments/exp2_*` |
-| 扩展③ 训练分析 | 学习曲线 / 梯度范数 / 参数分布诊断 | `experiments/exp3_*` |
-| 扩展④ 数据预处理与增强 | 标准化 / one-hot / 分层划分 / MNIST 归一化 / 随机平移增强 | `miniflows/data.py`、`experiments/exp4_preprocess_demo.py` |
-| 扩展⑤ 框架优化功能 | 动量、Adam、Dropout、L2、早停、学习率调度、模型保存加载 | `miniflows/utils.py`、`experiments/exp5_optimizations.py` |
-| 工程质量 | 统一 API 契约 + 单元测试 + 全中文注释 + 一键复现脚本 | `docs/API契约.md`、`tests/` |
+| 1) 经典 CNN | PyTorch LeNet-5（同结构对照基准） | `pytorch_benchmark/` |
+| 2) 自研框架 | 计算图 `Node` + 算子闭包反向传播 + `Sequential` + `Trainer` | `miniflows/` |
+| 2) 用自研框架搭线性/逻辑回归 | 两个完整应用 | `applications/linear_regression.py`、`logistic_regression.py` |
+| 3) 鸢尾花 + MNIST | MLP 93.33%；自研 CNN 92.85% | `applications/iris.py`、`applications/mnist.py` |
+| 4) DonkeyCar 自动驾驶 | 合成赛道 → 转向角回归，MAE 0.0446 + 闭环仿真 | `applications/donkeycar.py` |
+| 5) 需求/可行性/详细设计 | 三份中文文档 | `docs/` |
+| ★ 扩展① 计算图可视化 | 纯 matplotlib 分层 DAG（不依赖 graphviz） | `miniflows/visualization.py`、`experiments/exp1_graph_viz.py` |
+| ★ 扩展② 自动求导 + 梯度检验 | 中心差分 vs 解析梯度，17 项全部通过 | `miniflows/autodiff.py`、`experiments/exp2_grad_check.py` |
+| ★ 扩展③ 异常训练分析 | 过拟合 / 梯度消失 / 梯度爆炸 / 学习率震荡 | `experiments/exp3_training_analysis.py` |
+| ★ 扩展④ 数据预处理模块 | 标准化 / one-hot / 分层划分 / MNIST 加载 / 平移增强 | `miniflows/data.py`、`experiments/exp4_preprocess_demo.py` |
+| ★ 扩展⑤ 框架优化功能 | 动量、Dropout、L2、早停、学习率调度、模型持久化 | `miniflows/utils.py`、`experiments/exp5_optimizations.py` |
+| 工程质量 | API 契约 + 两套单元测试 + 全中文注释 | `docs/API契约.md`、`tests/` |
 
 **设计理念**：仿 Keras 的极简用法——`Sequential([...])` 搭网络、
-`Trainer(model, loss, optim).fit(X, y)` 训练，其余一切（建图、反向传播、
-模式切换）由框架自动完成。
+`Trainer(model, loss, optim).train(X, y)` 训练，建图、反向传播、模式切换全部自动完成。
+
+### 实测结果（CPU，2026-11）
+
+| 任务 | 指标 | 结果 |
+|---|---|---|
+| 算子梯度检验 | 最大相对误差 | **2.98e-9**（17 项全通过） |
+| 线性回归 | 学到的 w / b | 2.9899 / 2.0444（真值 3 / 2） |
+| 逻辑回归 | 测试准确率 | **100.00%** |
+| 鸢尾花 MLP | 测试准确率 | **93.33%** |
+| MNIST（MiniFlows） | 测试准确率 | **92.85%**（8000 样本，3 轮，10.9 s） |
+| MNIST（PyTorch） | 测试准确率 | 93.05%（同结构、同数据、同超参，1.4 s） |
+| DonkeyCar | 测试 MAE | **0.0446**（目标 <0.1） |
+| 保存/加载往返 | 预测最大差 | **0.0** |
 
 ---
 
@@ -33,38 +48,50 @@
 
 ```
 综设CNN/
-├── README.md                    # 本文件（项目主页）
-├── requirements.txt             # 依赖清单
-├── common_setup.py              # 公共环境初始化（中文/种子/Agg，勿改）
+├── README.md                        # 本文件（项目主页）
+├── requirements.txt                 # 依赖清单
+├── common_setup.py                  # 公共环境初始化（UTF-8/种子/中文字体/Agg）
 ├── docs/
-│   └── API契约.md               # 全体模块的唯一接口规范 v1.0
-├── miniflows/                   # ===== 自研框架本体（纯 numpy）=====
-│   ├── graph.py                 # Node 节点 / 拓扑排序 / backward（核心）
-│   ├── ops.py                   # 算子层：matmul/conv2d/relu/softmax...
-│   ├── layers.py                # Linear/Conv2D/Dropout/Sequential 容器
-│   ├── losses.py                # MSE / BCE / CrossEntropy / L2 正则
-│   ├── optim.py                 # MBGD(+momentum) / Adam 优化器
-│   ├── autodiff.py              # 数值梯度检验工具（扩展②）
-│   ├── data.py                  # 预处理与增强：缩放/one-hot/分层划分/MNIST/iris（扩展④）
-│   ├── visualization.py         # 计算图可视化 + 训练曲线（扩展①）
-│   ├── trainer.py               # Keras 风格训练器（history/callbacks）
-│   └── utils.py                 # 早停/学习率调度/模型保存加载（扩展⑤）
-├── experiments/                 # ===== 五大扩展项演示脚本 =====
-│   ├── exp1_graph_viz.py        # 扩展①：计算图可视化
-│   ├── exp2_gradient_check.py   # 扩展②：梯度检验（如有）
-│   ├── exp3_training_analysis.py# 扩展③：训练分析（如有）
-│   ├── exp4_preprocess_demo.py  # 扩展④：预处理与增强演示
-│   └── exp5_optimizations.py    # 扩展⑤：优化功能演示
-├── applications/                # ===== 应用任务脚本 =====
-├── pytorch_benchmark/           # PyTorch 同结构 CNN 对比
+│   ├── API契约.md                   # 全体模块的唯一接口规范 v1.0
+│   ├── 需求分析与可行性分析.md       # 文档①
+│   ├── 详细设计.md                  # 文档②（架构/算法/测试）
+│   └── 实验报告.md                  # 文档③（结果汇总，内嵌图片）
+├── miniflows/                       # ===== 自研框架本体（纯 numpy）=====
+│   ├── __init__.py                  # 顶层 API 导出（Sequential/Trainer/Adam/...）
+│   ├── graph.py                     # Node 节点 / 拓扑排序 / backward（核心）
+│   ├── ops.py                       # 算子：matmul / im2col 卷积 / 池化 / 激活 / 归约
+│   ├── layers.py                    # Linear / Conv2D / Dropout / Sequential 容器
+│   ├── losses.py                    # MSE / BCEWithLogits / CrossEntropy / L2 正则
+│   ├── optim.py                     # MBGD(+momentum) / Adam
+│   ├── autodiff.py                  # 数值梯度检验工具（扩展②）
+│   ├── data.py                      # 预处理与增强（扩展④）
+│   ├── visualization.py             # 计算图可视化 + 训练曲线（扩展①）
+│   ├── trainer.py                   # Keras 风格训练器（history / callbacks）
+│   └── utils.py                     # 早停 / 学习率调度 / 模型存取（扩展⑤）
+├── experiments/                     # ===== 五大扩展项演示 =====
+│   ├── exp1_graph_viz.py            # 扩展①：计算图可视化
+│   ├── exp2_grad_check.py           # 扩展②：梯度数值检验
+│   ├── exp3_training_analysis.py    # 扩展③：异常训练分析
+│   ├── exp4_preprocess_demo.py      # 扩展④：预处理与增强
+│   └── exp5_optimizations.py        # 扩展⑤：框架优化功能
+├── applications/                    # ===== 应用任务 =====
+│   ├── linear_regression.py         # 线性回归（MBGD vs Adam）
+│   ├── logistic_regression.py       # 逻辑回归（BCEWithLogits）
+│   ├── iris.py                      # 鸢尾花：Softmax 回归 vs 两层 MLP
+│   ├── mnist.py                     # MNIST：自研 LeNet 风格 CNN
+│   └── donkeycar.py                 # DonkeyCar：合成赛道 → 转向角 + 闭环仿真
+├── pytorch_benchmark/
+│   ├── lenet5.py                    # PyTorch 版 LeNet-5（与自研结构一致）
+│   └── train_lenet.py               # 同数据同超参训练 + 自动对比表
 ├── tests/
-│   └── test_infra.py            # 基础设施单元测试（9 个用例）
-├── outputs/                     # 所有实验产物（图片/报告/模型）
+│   ├── test_core.py                 # 框架核心测试（梯度检验/训练/CNN）
+│   └── test_infra.py                # 基础设施测试（数据/工具/保存加载）
+├── outputs/                         # 所有实验产物（图片/报告/模型）
 │   ├── exp1/  exp2/  exp3/  exp4/  exp5/
 │   ├── linear_regression/  logistic_regression/  iris/
-│   ├── mnist/  pytorch_benchmark/  donkeycar/
-└── data/                        # 数据集缓存（自动创建）
-    └── mnist/                   # MNIST idx.gz 缓存（首次运行自动下载）
+│   └── mnist/  pytorch_benchmark/  donkeycar/
+└── data/                            # 数据集缓存（自动创建，已加入 .gitignore）
+    └── mnist/                       # MNIST idx.gz 缓存（首次运行自动下载）
 ```
 
 ---
@@ -74,15 +101,12 @@
 **Python 3.10+（Windows / Linux 均可）**，推荐先建虚拟环境：
 
 ```bash
-# 可选：创建虚拟环境
 python -m venv .venv
 # Windows 激活
 .venv\Scripts\activate
 # 安装依赖（核心框架只需 numpy + matplotlib，其余为数据/对比实验服务）
 pip install -r requirements.txt
 ```
-
-依赖说明（见 `requirements.txt`）：
 
 | 包 | 必需性 | 用途 |
 |---|---|---|
@@ -92,8 +116,8 @@ pip install -r requirements.txt
 | torchvision | 可选 | MNIST 下载首选来源（有 urllib 镜像降级） |
 | torch | 可选 | 仅 PyTorch 对比实验需要 |
 
-> 即便只有 numpy + matplotlib，框架本身与全部演示仍可运行
-> （iris / MNIST 加载均有三级降级方案，见 [常见问题](#7-常见问题-faq)）。
+> 即便只有 numpy + matplotlib，框架与全部演示仍可运行
+> （iris / MNIST 加载均有三级降级方案，见 FAQ）。
 
 ---
 
@@ -101,68 +125,59 @@ pip install -r requirements.txt
 
 所有命令**均在项目根目录执行**。首次运行会自动下载数据并缓存到 `data/`。
 
-### 4.1 单元测试（约 10 秒）
+### 4.1 单元测试（约 5 秒）
 
 ```bash
-python tests/test_infra.py
-```
-预期输出末尾：
-```
-结果: 9/9 通过
+python tests/test_core.py      # 核心框架：算子形状、17 项梯度检验、MLP/CNN 训练
+python tests/test_infra.py     # 基础设施：数据缩放、划分、DataLoader、早停、保存加载
 ```
 
-### 4.2 扩展①：计算图可视化（约 10 秒）
+预期末尾分别输出 `✓ 核心框架全部测试通过` 与 `结果: 9/9 通过`。
+
+### 4.2 五个扩展实验（全部约 3~5 分钟）
 
 ```bash
-python experiments/exp1_graph_viz.py
+python experiments/exp1_graph_viz.py          # ① 计算图可视化（约 5 秒）
+python experiments/exp2_grad_check.py         # ② 梯度检验（约 30 秒）
+python experiments/exp3_training_analysis.py  # ③ 异常训练分析（约 2~3 分钟）
+python experiments/exp4_preprocess_demo.py    # ④ 预处理演示（首次含 MNIST 下载约 12MB）
+python experiments/exp5_optimizations.py      # ⑤ 框架优化功能（约 1~2 分钟）
 ```
-预期输出：打印表达式 `z=(a+b)*(b+c)` 的手算梯度验证（dz/da=4, dz/db=9, dz/dc=5）
-与两个图的节点/边数量；生成 `outputs/exp1/计算图_表达式.png`、`outputs/exp1/计算图_MLP.png`。
 
-### 4.3 扩展④：数据预处理与增强演示（约 1~3 分钟，首次含 MNIST 下载约 11MB）
+产物全部落在 `outputs/exp1` ~ `outputs/exp5`，其中 exp2/exp3/exp4/exp5 自动生成
+中文 Markdown 结论报告。
+
+### 4.3 应用任务
 
 ```bash
-python experiments/exp4_preprocess_demo.py
+python applications/linear_regression.py       # 学 w≈3, b≈2（约 2 秒）
+python applications/logistic_regression.py     # 二分类，测试准确率 100%（约 3 秒）
+python applications/iris.py                    # MLP 测试准确率 93.33%（约 5 秒）
+python applications/mnist.py                   # 自研 CNN，92.85%（约 15 秒；--full 为全量）
+python applications/donkeycar.py               # 转向角 MAE 0.0446（约 1 分钟）
 ```
-预期输出：鸢尾花标准化箱线图、one-hot 示例表、分层划分分布对比、
-MNIST 像素统计、平移增强对比网格，全部保存到 `outputs/exp4/`，
-并生成 `outputs/exp4/预处理演示结论.md`。
 
-### 4.4 扩展⑤：框架优化功能演示（约 1~2 分钟）
+### 4.4 PyTorch 同结构对比
 
 ```bash
-python experiments/exp5_optimizations.py
+python pytorch_benchmark/train_lenet.py        # 读取 outputs/mnist/mnist_result.json
 ```
-预期输出：优化器对比、Dropout 正则、学习率调度、早停、保存/加载一致性
-五组实验的图片（`outputs/exp5/*.png`）与中文结论报告
-`outputs/exp5/优化功能演示结论.md`。
 
-### 4.5 应用任务（鸢尾花 / MNIST 等，视脚本而定）
-
-```bash
-python applications/xxx.py     # 具体脚本名以 applications/ 目录为准
-```
-MNIST 快速模式（子集 8000 训练 / 3 轮 Adam）在普通 CPU 上约 5~10 分钟，
-预期测试准确率 ≥ 90%。
-
-### 4.6 PyTorch 同结构对比
-
-```bash
-python pytorch_benchmark/xxx.py
-```
-输出 `outputs/pytorch_benchmark/`，与自研 CNN 逐项对比准确率与耗时。
+输出自研 vs PyTorch 对比表（准确率/参数量/耗时），并保存到
+`outputs/pytorch_benchmark/对比结果.md`。如未先运行 `applications/mnist.py`，
+脚本会给出中文提示。
 
 ---
 
 ## 5. 五大扩展项与评分标准对照
 
-| 扩展项 | 功能 | 演示命令 | 产物 | 评分要点自评 |
+| 扩展项 | 功能 | 演示命令 | 产物 | 自评要点 |
 |---|---|---|---|---|
-| ① 计算图可视化 | 拓扑分层布局 + 节点框（名称/算子/形状）+ 有向箭头 + 语义配色，纯 matplotlib | `python experiments/exp1_graph_viz.py` | `outputs/exp1/*.png` | 手算表达式图 + 完整 MLP 图，节点/边数量打印验证 |
-| ② 梯度检验 | 中心差分数值梯度 vs 解析梯度，逐元素相对误差 | `python experiments/exp2_*.py` | `outputs/exp2/梯度检验报告.md` | 全部算子 max_rel_error < 1e-5 |
-| ③ 训练分析 | 学习曲线 / 梯度范数 / 参数分布诊断 | `python experiments/exp3_*.py` | `outputs/exp3/分析结论.md` | 定位过拟合/欠拟合/学习率不当 |
-| ④ 数据预处理与增强 | z-score/MinMax、one-hot、分层划分、MNIST 归一化、随机平移增强 | `python experiments/exp4_preprocess_demo.py` | `outputs/exp4/*.png` + 结论 md | 前后对比图 + 量化统计 |
-| ⑤ 框架优化功能 | 动量、Adam、Dropout、早停、学习率调度、模型持久化 | `python experiments/exp5_optimizations.py` | `outputs/exp5/*.png` + `优化功能演示结论.md` | 每项有对照实验 + 保存/加载往返一致 |
+| ① 计算图可视化 | 拓扑深度分层 + 节点框（算子/形状）+ 有向箭头 + 语义配色 | `python experiments/exp1_graph_viz.py` | `outputs/exp1/*.png` | 手算表达式图 + 完整 MLP 图 |
+| ② 梯度检验 | 中心差分数值梯度 vs 解析梯度，逐元素相对误差 | `python experiments/exp2_grad_check.py` | `outputs/exp2/梯度检验报告.md` | 17 项全部 <1e-5，最大 2.98e-9 |
+| ③ 训练分析 | 过拟合/梯度消失/爆炸/学习率震荡，各带对照与成因 | `python experiments/exp3_training_analysis.py` | `outputs/exp3/分析结论.md` | 四段式中文分析 + 四张图 |
+| ④ 数据预处理 | z-score/MinMax、one-hot、分层划分、MNIST、平移增强 | `python experiments/exp4_preprocess_demo.py` | `outputs/exp4/*.png` + 结论 md | 前后对比图 + 量化统计 |
+| ⑤ 框架优化功能 | 动量、Adam、Dropout、L2、早停、学习率调度、模型持久化 | `python experiments/exp5_optimizations.py` | `outputs/exp5/*.png` + 结论 md | 每项对照实验 + 保存/加载 max_diff=0 |
 
 ---
 
@@ -171,28 +186,26 @@ python pytorch_benchmark/xxx.py
 ### 6.1 搭网络 + 训练（Keras 风格）
 
 ```python
-from miniflows.layers import Sequential, Linear, ReLU, Dropout
-from miniflows.losses import CrossEntropyLoss, l2_penalty
-from miniflows.optim import Adam
-from miniflows.trainer import Trainer
-from miniflows.utils import EarlyStopping, LRScheduler, save_model, load_model
+from miniflows import (Sequential, Linear, ReLU, Dropout,
+                       CrossEntropyLoss, l2_penalty, Adam, Trainer)
+from miniflows.utils import EarlyStopping, LRScheduler
 
 model = Sequential(
     Linear(4, 16, name="fc1"), ReLU(),
     Dropout(p=0.5),                 # 训练期随机失活，评估自动关闭
     Linear(16, 3, name="fc2"),
 )
-loss_fn = CrossEntropyLoss()
 opt = Adam(model.params(), lr=1e-3)
 es = EarlyStopping(patience=8)                       # 连续 8 轮无改善即停
 lr_sched = LRScheduler(opt, mode="plateau", patience=3)
 
-trainer = Trainer(model, loss_fn, opt, task="classification", seed=42)
+trainer = Trainer(model, CrossEntropyLoss(), opt,
+                  task="classification", seed=42)
 history = trainer.train(
     X_train, y_train, X_val, y_val,
     epochs=100, batch_size=32,
     callbacks=[
-        lambda s: es(s["val_loss"]),                            # 早停回调
+        lambda s: es(s["val_loss"]),                              # 早停回调
         lambda s: lr_sched.step(val_loss=s["val_loss"]) or False,  # 调度回调
     ],
     l2_fn=lambda: l2_penalty(model, 1e-4),       # L2 正则（零参可调用）
@@ -205,7 +218,7 @@ pred = trainer.predict_classes(X_test)               # argmax 类别
 ### 6.2 计算图与自动微分
 
 ```python
-from miniflows.graph import param, constant
+from miniflows import param
 a, b, c = param(2.0, name="a"), param(3.0, name="b"), param(1.0, name="c")
 z = (a + b) * (b + c)          # 运算符重载自动建图
 z.backward()                   # 拓扑排序逆序执行 _backward
@@ -226,7 +239,7 @@ X_tr_s, scaler = standard_scale(X_tr)              # 只用训练集统计量
 X_te_s = apply_scale(X_te, scaler)                 # 防数据泄露
 loader = DataLoader(X_tr_s, y_tr, batch_size=32, shuffle=True, seed=0)
 
-(Xtr, ytr, Xte, yte) = load_mnist_arrays(subset_train=8000, subset_test=2000)
+Xtr, ytr, Xte, yte = load_mnist_arrays(subset_train=8000, subset_test=2000)
 Xtr_aug = random_shift_images(Xtr, max_shift=2, seed=0)        # ±2 像素平移增强
 ```
 
@@ -235,20 +248,25 @@ Xtr_aug = random_shift_images(Xtr, max_shift=2, seed=0)        # ±2 像素平�
 ```python
 from miniflows.visualization import (draw_computation_graph, plot_loss_curve,
                                      plot_lines, plot_images_grid)
-logits = model(X); loss = loss_fn(logits, y)
+logits = model(X); loss = CrossEntropyLoss()(logits, y)
 draw_computation_graph(loss, "outputs/graph.png", title="MLP 计算图")  # 纯 matplotlib
 plot_loss_curve(history, "outputs/curve.png")                      # loss 左轴 acc 右轴
 plot_images_grid(Xte[:8], titles=[f"标签 {v}" for v in yte[:8]],
                  path="outputs/mnist_grid.png")                    # 图像网格
 ```
 
-### 6.5 模型持久化与参数统计
+### 6.5 模型持久化与梯度检验
 
 ```python
 from miniflows.utils import save_model, load_model, count_params
+from miniflows.autodiff import gradient_check, check_model_gradients
+
 save_model(model, "outputs/model.npz")             # np.savez: 参数名 -> 数组
 load_model(model, "outputs/model.npz")             # 按名对号入座原地加载
 print(count_params(model))                         # 参数总量
+
+report = check_model_gradients(model, X[:8], CrossEntropyLoss(), y=y[:8])
+print(report["passed"], report["max_rel_error"])   # 全参数数值梯度检验
 ```
 
 ---
@@ -257,8 +275,8 @@ print(count_params(model))                         # 参数总量
 
 **Q1：图中中文标题显示成方块"口口"？**
 A：脚本开头务必调用 `common_setup.init_env()`（会设置微软雅黑/黑体字体）。
-若直接使用 `miniflows.visualization`，其画图函数内置了字体兜底（检测到默认
-西文字体时自动切换中文字体）。Linux 服务器需安装中文字体（如 `fonts-noto-cjk`）。
+若直接使用 `miniflows.visualization`，其画图函数内置了字体兜底。Linux 服务器
+需安装中文字体（如 `fonts-noto-cjk`）。
 
 **Q2：Windows 控制台中文输出乱码或报 UnicodeEncodeError？**
 A：每个脚本开头的"标准初始化头"已强制 `sys.stdout.reconfigure(encoding='utf-8')`；
@@ -272,19 +290,24 @@ A：三级方案：
 3. 仍失败会抛出带中文指引的 `RuntimeError`——鸢尾花相关实验不受影响。
 
 **Q4：鸢尾花数据加载报 sklearn 相关错误？**
-A：`load_iris()` 会自动降级：sklearn → 本地缓存 `data/iris_cache.csv` →
-合成高斯团簇数据（控制台打印警告），实验流程永不中断。
+A：`load_iris()` 会自动降级：sklearn → 本地缓存 → 合成高斯团簇数据
+（控制台打印警告），实验流程永不中断。
 
 **Q5：训练太慢？**
-A：MNIST 使用 `load_mnist_arrays(subset_train=8000, subset_test=2000)` 快速模式；
-仍慢可降到 5000/1000。所有实验脚本默认参数都保证在几分钟内跑完。
+A：MNIST 默认已使用类别均衡子集（8000/2000）与 3 轮训练，实测约 11 秒；
+如需更高精度可运行 `python applications/mnist.py --full`（60000/10000，5 轮）。
 
-**Q6：想保存/复现实验结果？**
+**Q6：如何复现实验结果？**
 A：全局种子由 `init_env(seed=42)` 统一固定；`Trainer(seed=...)` 控制 DataLoader
 乱序；`save_model/load_model` 支持参数落盘，往返后预测逐位一致（见扩展⑤ e 小节）。
 
-**Q7：如何运行单元测试？**
-A：`python tests/test_infra.py`，全部通过输出 `结果: 9/9 通过` 并以 0 退出。
+**Q7：为什么 `np.ones((2,2)) - node` 能正常工作？**
+A：`Node` 声明了 `__array_priority__ = 1000`，numpy 会放弃逐元素处理，
+改为调用 `Node.__rsub__`，从而得到正确的计算图节点而不是 object 数组。
+
+**Q8：为什么 BCE 里要特别处理 `(N,1)` 与 `(N,)`？**
+A：numpy 会把它们广播成 `(N,N)` 的笛卡尔组合，损失和梯度都会错但不报错。
+`BCEWithLogitsLoss` 内部显式把标签 reshape 为 `(N,1)` 规避该陷阱。
 
 ---
 
@@ -294,9 +317,23 @@ A：`python tests/test_infra.py`，全部通过输出 `结果: 9/9 通过` 并�
 |---|---|
 | `outputs/exp1/` | 扩展① 计算图（表达式 / MLP） |
 | `outputs/exp2/` | 扩展② 梯度检验报告 |
-| `outputs/exp3/` | 扩展③ 训练分析结论 |
-| `outputs/exp4/` | 扩展④ 预处理 5 张对比图 + `预处理演示结论.md` |
-| `outputs/exp5/` | 扩展⑤ 优化功能 5 张图 + `优化功能演示结论.md` + `model_demo.npz` |
-| `outputs/linear_regression/` `logistic_regression/` `iris/` | 经典任务结果 |
-| `outputs/mnist/` `outputs/pytorch_benchmark/` | 自研 vs PyTorch 对比（含 mnist_result.json） |
+| `outputs/exp3/` | 扩展③ 4 张分析图 + `分析结论.md` |
+| `outputs/exp4/` | 扩展④ 5 张对比图 + `预处理演示结论.md` |
+| `outputs/exp5/` | 扩展⑤ 6 张图 + `优化功能演示结论.md` + `model_demo.npz` |
+| `outputs/linear_regression/` `logistic_regression/` `iris/` | 经典任务结果图 |
+| `outputs/mnist/` | 自研 CNN 曲线、预测示例、`mnist_result.json` |
+| `outputs/pytorch_benchmark/` | PyTorch 曲线、结果 json、`对比结果.md` |
+| `outputs/donkeycar/` | 训练曲线、预测对比、样例图、闭环仿真、模型 npz |
 | `data/mnist/` | MNIST 原始数据缓存（首次运行自动生成） |
+
+---
+
+## 9. 文档索引
+
+| 文档 | 内容 |
+|---|---|
+| `docs/API契约.md` | 全部模块的接口签名与输出约定（开发基准） |
+| `docs/需求分析与可行性分析.md` | 需求表、非功能需求、技术/经济/操作/法律可行性、风险对策 |
+| `docs/详细设计.md` | 架构图、数据结构、拓扑排序/反向传播/im2col/Adam/梯度检验等算法、测试结果 |
+| `docs/实验报告.md` | 任务完成情况、扩展项结果（内嵌图片）、应用指标、问题解决记录 |
+| `proposal.md` | 项目立项书（背景、目标、技术路线、进度、风险） |

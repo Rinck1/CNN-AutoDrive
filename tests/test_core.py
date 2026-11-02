@@ -80,6 +80,9 @@ def test_node_basic():
     assert np.allclose(d.data, x.data)
 
     # ---- 4) 常量节点不积累梯度，但参与前向 ----
+    # 注意：框架语义与 PyTorch 相同——梯度是"累加"的，
+    # 所以这里必须先清零，否则会叠加第 2 步 y=x*x+x 留下的 2x+1。
+    x.zero_grad()
     c = constant(2.0)
     s = (c * x).sum()
     s.backward()
@@ -179,10 +182,10 @@ def test_op_shapes():
     # ---- 3) 基础逐元素运算与广播 ----
     assert ops.add(Node(x4), Node(np.ones(8))).shape == (2, 3, 8, 8), 'add 广播'
     assert ops.sub(Node(x4), 1.0).shape == x4.shape, 'sub'
-    assert ops.mul(Node(x4), Node(np.ones((3, 1)))).shape == x4.shape, 'mul 广播'
+    assert ops.mul(Node(x4), Node(np.ones((1, 3, 1, 1)))).shape == x4.shape, 'mul 广播'
     assert ops.div(Node(x4), Node(2.0)).shape == x4.shape, 'div'
     assert ops.matmul(Node(np.random.randn(2, 3)), Node(np.random.randn(3, 4))).shape == (2, 4), 'matmul'
-    assert ops.broadcast_add(Node(x4), Node(np.random.randn(3, 1))).shape == x4.shape, 'broadcast_add'
+    assert ops.broadcast_add(Node(x4), Node(np.random.randn(3))).shape == x4.shape, 'broadcast_add'
     assert ops.neg(Node(x4)).shape == x4.shape, 'neg'
 
     # ---- 4) 激活函数 ----
@@ -256,9 +259,9 @@ def test_gradient_checks():
     do_gc('matmul', lambda ns: ops.matmul(ns[0], ns[1]).sum(),
           [np.random.randn(3, 4), np.random.randn(4, 2)])
     do_gc('broadcast_add', lambda ns: ops.broadcast_add(ns[0], ns[1]).sum(),
-          [np.random.randn(2, 3, 4, 4), np.random.randn(1, 4, 1, 1)])  # (1,F,1,1) 偏置
+          [np.random.randn(2, 3, 4, 4), np.random.randn(1, 3, 1, 1)])  # (1,F,1,1) 偏置，F=C=3
     do_gc('broadcast_add向量', lambda ns: ops.broadcast_add(ns[0], ns[1]).sum(),
-          [np.random.randn(2, 3, 4, 4), np.random.randn(4)])
+          [np.random.randn(2, 3, 4, 4), np.random.randn(3)])            # (C,) 通道偏置
 
     # ---- exp / log / pow / sqrt ----
     do_gc('exp', lambda ns: ops.exp(ns[0]).sum(), [np.random.randn(3, 4) * 0.5])  # 幅度小防溢出
@@ -424,7 +427,7 @@ def test_cnn():
 
     # ---- 附带检验：l2_penalty 与损失相加后梯度依然正确 ----
     np.random.seed(8)
-    model2 = Sequential(Conv2D(1, 2, 3, padding=1), ReLU(), Flatten(), Linear(128, 2))
+    model2 = Sequential(Conv2D(1, 2, 3, padding=1), ReLU(), Flatten(), Linear(2 * 6 * 6, 2))
     x2 = np.random.randn(2, 1, 6, 6)
     y2 = np.random.RandomState(2).randn(2, 2)
     loss_fn = MSELoss()
@@ -493,7 +496,7 @@ def test_summary_and_dropout():
     # ---- 4) named_params 命名规则 + zero_grad + 参数保存名唯一性 ----
     named_conv = Sequential(Conv2D(2, 2, 3, name='conv1'), Flatten(), Linear(18, 2))
     names = [n for n, _ in named_conv.named_params()]
-    assert names == ['conv1.W', 'conv1.b', 'layer1.W', 'layer1.b'], \
+    assert names == ['conv1.W', 'conv1.b', 'layer2.W', 'layer2.b'], \
         f'named_params 命名错误: {names}'
     named_conv.zero_grad()
     assert all(p.grad is None for _, p in named_conv.named_params()), 'zero_grad 未清空'

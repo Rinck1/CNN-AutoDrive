@@ -4,7 +4,7 @@
   "epochs": 3,
   "subset_train": 8000,
   "subset_test": 2000,
-  "train_seconds": 1.7,
+  "train_seconds": 1.4,
   "param_count": 44426,
   "device": "cpu"
 }
