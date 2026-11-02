@@ -1,0 +1,29 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# ---- 数据集缓存（体积大，脚本会自动下载） ----
+data/
+*.idx
+*.idx.gz
+*.ubyte
+
+# ---- 训练产物中的大文件（模型权重可本地保留，不入库） ----
+outputs/**/*.npz
+outputs/**/*.pt
+outputs/**/*.pth
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ---- 与本次项目无关的本地目录 ----
+GFG 扰动/
+.zcode/

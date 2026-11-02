@@ -1,0 +1,10 @@
+{
+  "framework": "pytorch",
+  "test_accuracy": 0.9305,
+  "epochs": 3,
+  "subset_train": 8000,
+  "subset_test": 2000,
+  "train_seconds": 1.7,
+  "param_count": 44426,
+  "device": "cpu"
+}

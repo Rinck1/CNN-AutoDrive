@@ -1,0 +1,10 @@
+# MiniFlows 综合设计项目依赖
+# 核心框架（miniflows）仅依赖前两个包：
+numpy>=1.24
+matplotlib>=3.7
+
+# 以下包用于：MNIST 数据下载（torchvision）、鸢尾花数据加载（scikit-learn）、
+# PyTorch 经典 CNN 对比实验（torch）。安装了 CUDA 版则自动使用 GPU，CPU 亦可运行。
+torch>=2.0
+torchvision>=0.15
+scikit-learn>=1.2
