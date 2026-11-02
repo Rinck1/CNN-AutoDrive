@@ -33,7 +33,7 @@
 
 | 任务 | 指标 | 结果 |
 |---|---|---|
-| 算子梯度检验 | 最大相对误差 | **2.98e-9**（17 项全通过） |
+| 梯度检验（exp2 17 项 / 单测 34 项） | 最大相对误差 | **1.36e-7 / 2.98e-9**（均 <1e-5） |
 | 线性回归 | 学到的 w / b | 2.9899 / 2.0444（真值 3 / 2） |
 | 逻辑回归 | 测试准确率 | **100.00%** |
 | 鸢尾花 MLP | 测试准确率 | **93.33%** |
@@ -55,7 +55,8 @@
 │   ├── API契约.md                   # 全体模块的唯一接口规范 v1.0
 │   ├── 需求分析与可行性分析.md       # 文档①
 │   ├── 详细设计.md                  # 文档②（架构/算法/测试）
-│   └── 实验报告.md                  # 文档③（结果汇总，内嵌图片）
+│   ├── 实验报告.md                  # 文档③（结果汇总，内嵌图片）
+│   └── 审核分工.md                  # 六人审核分工、任务卡与通过标准
 ├── miniflows/                       # ===== 自研框架本体（纯 numpy）=====
 │   ├── __init__.py                  # 顶层 API 导出（Sequential/Trainer/Adam/...）
 │   ├── graph.py                     # Node 节点 / 拓扑排序 / backward（核心）
@@ -174,7 +175,7 @@ python pytorch_benchmark/train_lenet.py        # 读取 outputs/mnist/mnist_resu
 | 扩展项 | 功能 | 演示命令 | 产物 | 自评要点 |
 |---|---|---|---|---|
 | ① 计算图可视化 | 拓扑深度分层 + 节点框（算子/形状）+ 有向箭头 + 语义配色 | `python experiments/exp1_graph_viz.py` | `outputs/exp1/*.png` | 手算表达式图 + 完整 MLP 图 |
-| ② 梯度检验 | 中心差分数值梯度 vs 解析梯度，逐元素相对误差 | `python experiments/exp2_grad_check.py` | `outputs/exp2/梯度检验报告.md` | 17 项全部 <1e-5，最大 2.98e-9 |
+| ② 梯度检验 | 中心差分数值梯度 vs 解析梯度，逐元素相对误差 | `python experiments/exp2_grad_check.py` | `outputs/exp2/梯度检验报告.md` | 17 项全部 <1e-5，最大 1.36e-7 |
 | ③ 训练分析 | 过拟合/梯度消失/爆炸/学习率震荡，各带对照与成因 | `python experiments/exp3_training_analysis.py` | `outputs/exp3/分析结论.md` | 四段式中文分析 + 四张图 |
 | ④ 数据预处理 | z-score/MinMax、one-hot、分层划分、MNIST、平移增强 | `python experiments/exp4_preprocess_demo.py` | `outputs/exp4/*.png` + 结论 md | 前后对比图 + 量化统计 |
 | ⑤ 框架优化功能 | 动量、Adam、Dropout、L2、早停、学习率调度、模型持久化 | `python experiments/exp5_optimizations.py` | `outputs/exp5/*.png` + 结论 md | 每项对照实验 + 保存/加载 max_diff=0 |
@@ -336,4 +337,5 @@ A：numpy 会把它们广播成 `(N,N)` 的笛卡尔组合，损失和梯度都�
 | `docs/需求分析与可行性分析.md` | 需求表、非功能需求、技术/经济/操作/法律可行性、风险对策 |
 | `docs/详细设计.md` | 架构图、数据结构、拓扑排序/反向传播/im2col/Adam/梯度检验等算法、测试结果 |
 | `docs/实验报告.md` | 任务完成情况、扩展项结果（内嵌图片）、应用指标、问题解决记录 |
+| `docs/审核分工.md` | 六人审核范围、每人任务卡、交叉复核、问题单规范、基线数据与签字表 |
 | `proposal.md` | 项目立项书（背景、目标、技术路线、进度、风险） |
