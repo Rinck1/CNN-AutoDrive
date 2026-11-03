@@ -17,8 +17,8 @@
 | 2) 自研框架 | 计算图 `Node` + 算子闭包反向传播 + `Sequential` + `Trainer` | `miniflows/` |
 | 2) 用自研框架搭线性/逻辑回归 | 两个完整应用 | `applications/linear_regression.py`、`logistic_regression.py` |
 | 3) 鸢尾花 + MNIST | MLP 93.33%；自研 CNN 92.85% | `applications/iris.py`、`applications/mnist.py` |
-| 4) DonkeyCar 自动驾驶 | 合成赛道 → 转向角回归，MAE 0.0446 + 闭环仿真 | `applications/donkeycar.py` |
-| 5) 需求/可行性/详细设计 | 三份中文文档 | `docs/` |
+| 4) DonkeyCar 自动驾驶 | 合成赛道 → 转向角回归；演示 + 严格评测（5 种子/鲁棒性/多赛道闭环） | `applications/donkeycar.py`、`donkeycar_eval.py` |
+| 5) 需求/可行性/详细设计/实验报告 | 四份中文文档 + 审核分工 | `docs/` |
 | ★ 扩展① 计算图可视化 | 纯 matplotlib 分层 DAG（不依赖 graphviz） | `miniflows/visualization.py`、`experiments/exp1_graph_viz.py` |
 | ★ 扩展② 自动求导 + 梯度检验 | 中心差分 vs 解析梯度，17 项全部通过 | `miniflows/autodiff.py`、`experiments/exp2_grad_check.py` |
 | ★ 扩展③ 异常训练分析 | 过拟合 / 梯度消失 / 梯度爆炸 / 学习率震荡 | `experiments/exp3_training_analysis.py` |
@@ -39,7 +39,8 @@
 | 鸢尾花 MLP | 测试准确率 | **93.33%** |
 | MNIST（MiniFlows） | 测试准确率 | **92.85%**（8000 样本，3 轮，10.9 s） |
 | MNIST（PyTorch） | 测试准确率 | 93.05%（同结构、同数据、同超参，1.4 s） |
-| DonkeyCar | 测试 MAE | **0.0446**（目标 <0.1） |
+| DonkeyCar（演示） | 测试 MAE | 0.0446（测试集兼作验证，偏乐观） |
+| DonkeyCar（严格评测） | 5 种子测试 MAE | **0.0534±0.0069**；同分布闭环 100%、极端赛道 0%、噪声闭环 100%；单帧约 0.5 ms |
 | 保存/加载往返 | 预测最大差 | **0.0** |
 
 ---
@@ -80,7 +81,8 @@
 │   ├── logistic_regression.py       # 逻辑回归（BCEWithLogits）
 │   ├── iris.py                      # 鸢尾花：Softmax 回归 vs 两层 MLP
 │   ├── mnist.py                     # MNIST：自研 LeNet 风格 CNN
-│   └── donkeycar.py                 # DonkeyCar：合成赛道 → 转向角 + 闭环仿真
+│   ├── donkeycar.py                 # DonkeyCar：合成赛道 → 转向角 + 闭环仿真
+│   └── donkeycar_eval.py            # DonkeyCar 严格评测（5 种子/鲁棒性/多赛道闭环）
 ├── pytorch_benchmark/
 │   ├── lenet5.py                    # PyTorch 版 LeNet-5（与自研结构一致）
 │   └── train_lenet.py               # 同数据同超参训练 + 自动对比表
@@ -155,7 +157,9 @@ python applications/linear_regression.py       # 学 w≈3, b≈2（约 2 秒）
 python applications/logistic_regression.py     # 二分类，测试准确率 100%（约 3 秒）
 python applications/iris.py                    # MLP 测试准确率 93.33%（约 5 秒）
 python applications/mnist.py                   # 自研 CNN，92.85%（约 15 秒；--full 为全量）
-python applications/donkeycar.py               # 转向角 MAE 0.0446（约 1 分钟）
+python applications/donkeycar.py               # 演示：转向角 MAE 0.0446（约 1 分钟）
+python applications/donkeycar_eval.py          # 严格评测：5 种子/鲁棒性/多赛道（约 3~5 分钟）
+python applications/donkeycar_eval.py --quick  # 严格评测快速自检（约 30 秒）
 ```
 
 ### 4.4 PyTorch 同结构对比
@@ -163,6 +167,31 @@ python applications/donkeycar.py               # 转向角 MAE 0.0446（约 1 �
 ```bash
 python pytorch_benchmark/train_lenet.py        # 读取 outputs/mnist/mnist_result.json
 ```
+
+### 4.5 DonkeyCar 严格评测
+
+```bash
+python applications/donkeycar_eval.py          # 完整（5 种子，约 3~5 分钟）
+python applications/donkeycar_eval.py --quick  # 快速自检（约 30 秒）
+```
+
+协议：900 条合成赛道图，按 **70%/15%/15%** 切分训练/验证/测试；
+测试集全程不参与训练、早停或模型选择；重复 5 个随机种子。
+
+主要结果（详见 `outputs/donkeycar/测试报告.md`）：
+
+| 测试 | 结果 |
+|---|---|
+| 开环测试（675 条留出样本） | MAE **0.0534±0.0069**，R² 0.973，直行基线 MAE 0.3575 |
+| 同分布闭环（6 赛道 × 5 模型） | 成功率 **100%**，最大偏差均值 2.90 px（半宽 10 px） |
+| 分布外闭环（更弯/更短） | 成功率 **100%**，最大偏差均值 5.75 px |
+| 极端闭环（A=18~22px、λ=160~190px、速度 3.0） | 成功率 **0%**，最大偏差均值 20.69 px（暴露控制极限） |
+| 噪声闭环（σ=0.05） | 成功率 **100%** |
+| 不转向开环 | 成功率 **0%**（对照组） |
+| 单帧推理 / 保存加载 | 约 0.5 ms（≈2000 FPS） / max_diff = 0 |
+
+鲁棒性（开环 MAE）：干净 0.0534；σ=0.05 噪声 0.0797；亮度 +0.2 0.1331；
+对比度×0.7 0.1484（最差）；模糊 3×3 0.1408；底部遮挡 0.0885。
 
 输出自研 vs PyTorch 对比表（准确率/参数量/耗时），并保存到
 `outputs/pytorch_benchmark/对比结果.md`。如未先运行 `applications/mnist.py`，
@@ -306,9 +335,10 @@ A：全局种子由 `init_env(seed=42)` 统一固定；`Trainer(seed=...)` 控�
 A：`Node` 声明了 `__array_priority__ = 1000`，numpy 会放弃逐元素处理，
 改为调用 `Node.__rsub__`，从而得到正确的计算图节点而不是 object 数组。
 
-**Q8：为什么 BCE 里要特别处理 `(N,1)` 与 `(N,)`？**
+**Q8：为什么 BCE / MSE 里要特别处理 `(N,1)` 与 `(N,)`？**
 A：numpy 会把它们广播成 `(N,N)` 的笛卡尔组合，损失和梯度都会错但不报错。
-`BCEWithLogitsLoss` 内部显式把标签 reshape 为 `(N,1)` 规避该陷阱。
+`BCEWithLogitsLoss` 与 `MSELoss` 内部都显式把标签 reshape 为 `(N,1)` 规避该陷阱
+（DonkeyCar 严格评测曾因此一度学不动，见 `docs/实验报告.md` 问题记录）。
 
 ---
 
@@ -324,7 +354,7 @@ A：numpy 会把它们广播成 `(N,N)` 的笛卡尔组合，损失和梯度都�
 | `outputs/linear_regression/` `logistic_regression/` `iris/` | 经典任务结果图 |
 | `outputs/mnist/` | 自研 CNN 曲线、预测示例、`mnist_result.json` |
 | `outputs/pytorch_benchmark/` | PyTorch 曲线、结果 json、`对比结果.md` |
-| `outputs/donkeycar/` | 训练曲线、预测对比、样例图、闭环仿真、模型 npz |
+| `outputs/donkeycar/` | 演示图 + **严格评测**：`测试报告.md`、开环误差分布、鲁棒性、多赛道闭环、推理延迟、结果 json |
 | `data/mnist/` | MNIST 原始数据缓存（首次运行自动生成） |
 
 ---

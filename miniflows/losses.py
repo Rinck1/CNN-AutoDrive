@@ -55,6 +55,14 @@ class MSELoss:
         """
         pred = pred if isinstance(pred, Node) else constant(pred)
         t = np.asarray(target, dtype=np.float64)
+        # 与 BCEWithLogitsLoss 相同的广播陷阱：pred 为 (N,1)、target 为 (N,) 时，
+        # numpy 会广播成 (N,N) 的笛卡尔组合，损失与梯度都会错但不报错。
+        # 这里显式把标签补成 (N,1)，保证逐样本对应。
+        if pred.data.ndim == 2 and pred.data.shape[1] == 1 and t.shape == (pred.data.shape[0],):
+            t = t.reshape(-1, 1)
+        # 对称情况：预测 (N,)、标签 (N,1) 时把标签压回 (N,)，避免同样的 (N,N) 广播
+        elif t.ndim == 2 and t.shape[1] == 1 and pred.data.shape == (t.shape[0],):
+            t = t.reshape(-1)
         diff = pred.data - t                      # 误差 (p - t)（已广播对齐）
         n = diff.size                             # 元素总数（mean 的分母）
         loss_val = np.mean(diff ** 2)             # 前向标量损失
