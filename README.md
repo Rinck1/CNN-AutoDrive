@@ -18,13 +18,14 @@
 | 2) 用自研框架搭线性/逻辑回归 | 两个完整应用 | `applications/linear_regression.py`、`logistic_regression.py` |
 | 3) 鸢尾花 + MNIST | MLP 93.33%；自研 CNN 92.85% | `applications/iris.py`、`applications/mnist.py` |
 | 4) DonkeyCar 自动驾驶 | 合成赛道 → 转向角回归；演示 + 严格评测（5 种子/鲁棒性/多赛道闭环） | `applications/donkeycar.py`、`donkeycar_eval.py` |
+| ★ 额外：DonkeyCar ViT 版本 | 自研 Vision Transformer（patch/注意力/LayerNorm），与 CNN 同协议对比 | `miniflows/transformer.py`、`applications/donkeycar_vit.py` |
 | 5) 需求/可行性/详细设计/实验报告 | 四份中文文档 + 审核分工 | `docs/` |
 | ★ 扩展① 计算图可视化 | 纯 matplotlib 分层 DAG（不依赖 graphviz） | `miniflows/visualization.py`、`experiments/exp1_graph_viz.py` |
 | ★ 扩展② 自动求导 + 梯度检验 | 中心差分 vs 解析梯度，17 项全部通过 | `miniflows/autodiff.py`、`experiments/exp2_grad_check.py` |
 | ★ 扩展③ 异常训练分析 | 过拟合 / 梯度消失 / 梯度爆炸 / 学习率震荡 | `experiments/exp3_training_analysis.py` |
 | ★ 扩展④ 数据预处理模块 | 标准化 / one-hot / 分层划分 / MNIST 加载 / 平移增强 | `miniflows/data.py`、`experiments/exp4_preprocess_demo.py` |
 | ★ 扩展⑤ 框架优化功能 | 动量、Dropout、L2、早停、学习率调度、模型持久化 | `miniflows/utils.py`、`experiments/exp5_optimizations.py` |
-| 工程质量 | API 契约 + 两套单元测试 + 全中文注释 | `docs/API契约.md`、`tests/` |
+| 工程质量 | API 契约 + 三套单元测试 + 全中文注释 | `docs/API契约.md`、`tests/` |
 
 **设计理念**：仿 Keras 的极简用法——`Sequential([...])` 搭网络、
 `Trainer(model, loss, optim).train(X, y)` 训练，建图、反向传播、模式切换全部自动完成。
@@ -41,6 +42,7 @@
 | MNIST（PyTorch） | 测试准确率 | 93.05%（同结构、同数据、同超参，1.4 s） |
 | DonkeyCar（演示） | 测试 MAE | 0.0446（测试集兼作验证，偏乐观） |
 | DonkeyCar（严格评测） | 5 种子测试 MAE | **0.0534±0.0069**；同分布闭环 100%、极端赛道 0%、噪声闭环 100%；单帧约 0.5 ms |
+| DonkeyCar ViT | 5 种子测试 MAE | **0.0520±0.0051**（CNN 0.0534，差异在噪声内）；参数量 44,353；单帧 6.88 ms |
 | 保存/加载往返 | 预测最大差 | **0.0** |
 
 ---
@@ -69,7 +71,8 @@
 │   ├── data.py                      # 预处理与增强（扩展④）
 │   ├── visualization.py             # 计算图可视化 + 训练曲线（扩展①）
 │   ├── trainer.py                   # Keras 风格训练器（history / callbacks）
-│   └── utils.py                     # 早停 / 学习率调度 / 模型存取（扩展⑤）
+│   ├── utils.py                     # 早停 / 学习率调度 / 模型存取（扩展⑤）
+│   └── transformer.py               # ViT：LayerNorm/GELU/MHSA/TransformerBlock/PatchEmbedding
 ├── experiments/                     # ===== 五大扩展项演示 =====
 │   ├── exp1_graph_viz.py            # 扩展①：计算图可视化
 │   ├── exp2_grad_check.py           # 扩展②：梯度数值检验
@@ -82,17 +85,19 @@
 │   ├── iris.py                      # 鸢尾花：Softmax 回归 vs 两层 MLP
 │   ├── mnist.py                     # MNIST：自研 LeNet 风格 CNN
 │   ├── donkeycar.py                 # DonkeyCar：合成赛道 → 转向角 + 闭环仿真
-│   └── donkeycar_eval.py            # DonkeyCar 严格评测（5 种子/鲁棒性/多赛道闭环）
+│   ├── donkeycar_eval.py            # DonkeyCar 严格评测（5 种子/鲁棒性/多赛道闭环）
+│   └── donkeycar_vit.py             # DonkeyCar ViT 版本（同协议对比 + 注意力可视化）
 ├── pytorch_benchmark/
 │   ├── lenet5.py                    # PyTorch 版 LeNet-5（与自研结构一致）
 │   └── train_lenet.py               # 同数据同超参训练 + 自动对比表
 ├── tests/
 │   ├── test_core.py                 # 框架核心测试（梯度检验/训练/CNN）
-│   └── test_infra.py                # 基础设施测试（数据/工具/保存加载）
+│   ├── test_infra.py                # 基础设施测试（数据/工具/保存加载）
+│   └── test_transformer.py          # ViT 组件测试（新算子/注意力/LayerNorm/全参数梯度）
 ├── outputs/                         # 所有实验产物（图片/报告/模型）
 │   ├── exp1/  exp2/  exp3/  exp4/  exp5/
 │   ├── linear_regression/  logistic_regression/  iris/
-│   └── mnist/  pytorch_benchmark/  donkeycar/
+│   └── mnist/  pytorch_benchmark/  donkeycar/  donkeycar_vit/
 └── data/                            # 数据集缓存（自动创建，已加入 .gitignore）
     └── mnist/                       # MNIST idx.gz 缓存（首次运行自动下载）
 ```
@@ -131,11 +136,13 @@ pip install -r requirements.txt
 ### 4.1 单元测试（约 5 秒）
 
 ```bash
-python tests/test_core.py      # 核心框架：算子形状、17 项梯度检验、MLP/CNN 训练
-python tests/test_infra.py     # 基础设施：数据缩放、划分、DataLoader、早停、保存加载
+python tests/test_core.py         # 核心框架：算子形状、梯度检验、MLP/CNN 训练
+python tests/test_infra.py        # 基础设施：数据缩放、划分、DataLoader、早停、保存加载
+python tests/test_transformer.py  # ViT：GELU/concat/broadcast/select 梯度、注意力、LayerNorm
 ```
 
-预期末尾分别输出 `✓ 核心框架全部测试通过` 与 `结果: 9/9 通过`。
+预期末尾分别输出 `✓ 核心框架全部测试通过`、`结果: 9/9 通过` 与
+`✓ Transformer 全部测试通过`。
 
 ### 4.2 五个扩展实验（全部约 3~5 分钟）
 
@@ -160,6 +167,8 @@ python applications/mnist.py                   # 自研 CNN，92.85%（约 15 �
 python applications/donkeycar.py               # 演示：转向角 MAE 0.0446（约 1 分钟）
 python applications/donkeycar_eval.py          # 严格评测：5 种子/鲁棒性/多赛道（约 3~5 分钟）
 python applications/donkeycar_eval.py --quick  # 严格评测快速自检（约 30 秒）
+python applications/donkeycar_vit.py           # ViT 版本（5 种子，约 6~10 分钟）
+python applications/donkeycar_vit.py --quick   # ViT 快速自检（约 1 分钟）
 ```
 
 ### 4.4 PyTorch 同结构对比
@@ -167,6 +176,10 @@ python applications/donkeycar_eval.py --quick  # 严格评测快速自检（约 
 ```bash
 python pytorch_benchmark/train_lenet.py        # 读取 outputs/mnist/mnist_result.json
 ```
+
+输出自研 vs PyTorch 对比表（准确率/参数量/耗时），并保存到
+`outputs/pytorch_benchmark/对比结果.md`。如未先运行 `applications/mnist.py`，
+脚本会给出中文提示。
 
 ### 4.5 DonkeyCar 严格评测
 
@@ -193,9 +206,30 @@ python applications/donkeycar_eval.py --quick  # 快速自检（约 30 秒）
 鲁棒性（开环 MAE）：干净 0.0534；σ=0.05 噪声 0.0797；亮度 +0.2 0.1331；
 对比度×0.7 0.1484（最差）；模糊 3×3 0.1408；底部遮挡 0.0885。
 
-输出自研 vs PyTorch 对比表（准确率/参数量/耗时），并保存到
-`outputs/pytorch_benchmark/对比结果.md`。如未先运行 `applications/mnist.py`，
-脚本会给出中文提示。
+### 4.6 DonkeyCar ViT 版本
+
+```bash
+python applications/donkeycar_vit.py           # 完整（5 种子，约 6~10 分钟）
+python applications/donkeycar_vit.py --quick   # 快速自检（约 1 分钟）
+```
+
+ViT-Tiny：patch=8、dim=48、depth=2、heads=4，参数量 **44,353**（CNN 44,426），
+同协议（900 样本、70/15/15、5 种子、12 轮）结果：
+
+| 指标 | ViT | CNN | 说明 |
+|---|---|---|---|
+| 开环 MAE | **0.0520±0.0051** | 0.0534±0.0069 | 差值小于标准差，同一水平 |
+| R² | 0.974 | 0.973 | 基本一致 |
+| 同分布闭环 | 100%（4.29px） | 100%（2.90px） | ViT 横向偏差更大 |
+| 分布外闭环 | 100%（7.06px） | 100%（5.75px） | ViT 跟踪更松 |
+| 极端闭环 | 0%（25.72px） | 0%（20.69px） | 都失效 |
+| 单帧推理 | 6.88 ms（145 FPS） | 约 0.5 ms | ViT 慢约 14 倍 |
+| 训练/模型 | 52.1 s | 5.4 s | ViT 慢约 10 倍 |
+
+**关键发现**：ViT 在干净测试集上与 CNN 持平，但对亮度/对比度/遮挡明显更敏感
+（底部遮挡 MAE 0.5354 vs 0.0885，约 6 倍；亮度 -0.2 为 0.5385 vs 0.0824）。
+注意力图显示 [CLS] 主要关注道路边界/中心 patch，但缺少卷积的局部性先验。
+详见 `outputs/donkeycar_vit/测试报告.md`。
 
 ---
 
@@ -355,6 +389,7 @@ A：numpy 会把它们广播成 `(N,N)` 的笛卡尔组合，损失和梯度都�
 | `outputs/mnist/` | 自研 CNN 曲线、预测示例、`mnist_result.json` |
 | `outputs/pytorch_benchmark/` | PyTorch 曲线、结果 json、`对比结果.md` |
 | `outputs/donkeycar/` | 演示图 + **严格评测**：`测试报告.md`、开环误差分布、鲁棒性、多赛道闭环、推理延迟、结果 json |
+| `outputs/donkeycar_vit/` | ViT：`测试报告.md`、模型对比、鲁棒性对比、注意力图、闭环、训练曲线、结果 json |
 | `data/mnist/` | MNIST 原始数据缓存（首次运行自动生成） |
 
 ---

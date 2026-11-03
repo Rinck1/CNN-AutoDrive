@@ -67,6 +67,19 @@ from .layers import (
 )
 
 # ---------------------------------------------------------------------------
+# Transformer / Vision Transformer（ViT）组件
+# ---------------------------------------------------------------------------
+from .transformer import (
+    LayerNorm,
+    GELU,
+    MultiHeadSelfAttention,
+    TransformerBlock,
+    PatchEmbedding,
+    ViTRegressor,
+    build_vit,
+)
+
+# ---------------------------------------------------------------------------
 # 损失函数与正则
 # ---------------------------------------------------------------------------
 from .losses import MSELoss, BCEWithLogitsLoss, CrossEntropyLoss, l2_penalty
@@ -105,6 +118,9 @@ __all__ = [
     # 层
     "Layer", "Linear", "Conv2D", "MaxPool2D", "AvgPool2D", "Flatten",
     "ReLU", "Sigmoid", "Tanh", "Softmax", "Dropout", "Sequential",
+    # Transformer / ViT
+    "LayerNorm", "GELU", "MultiHeadSelfAttention", "TransformerBlock",
+    "PatchEmbedding", "ViTRegressor", "build_vit",
     # 损失
     "MSELoss", "BCEWithLogitsLoss", "CrossEntropyLoss", "l2_penalty",
     # 优化器

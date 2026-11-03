@@ -305,3 +305,46 @@ def count_params(model) -> int          # 参数总量
 - PyTorch LeNet-5 与上面结构完全一致（对比才公平），同样默认快速子集。
 - 鸢尾花 MLP：4→16(ReLU)→3，Adam lr=1e-3，epochs≈100（全量 150 条很快）。
 - 若 numpy 版 CNN 单轮超过 8 分钟，把默认子集降到 5000/1000 并在注释中说明。
+
+
+## 14. miniflows/transformer.py —— Vision Transformer 扩展
+
+> 在核心框架之上新增的 ViT 组件，全部由既有算子组合实现，反向自动求导。
+> 新增算子（ops）：`gelu(x)`、`concat(nodes, axis)`、`broadcast_to(x, shape)`、
+> `select(x, index, axis)`；`matmul` 支持 `(N,H,L,Dh)` 批量维。
+
+```python
+class LayerNorm(Layer):
+    def __init__(self, dim, eps=1e-5, name=None)
+    # forward: y = gamma*(x-mean)/sqrt(var+eps)+beta（沿最后一维）
+    # named_params -> [('gamma',Node), ('beta',Node)]
+
+class GELU(Layer):
+    # tanh 近似：0.5x(1+tanh(k(x+0.044715x^3)))，k=sqrt(2/pi)
+
+class MultiHeadSelfAttention(Layer):
+    def __init__(self, dim, heads, name=None)
+    # x:(N,L,D) -> (N,L,D)；Q/K/V/O 各一个 Linear
+    # last_attn: 最近一次前向的注意力权重 (N,H,L,L)，供可视化
+
+class TransformerBlock(Layer):
+    def __init__(self, dim, heads, mlp_ratio=2, name=None)
+    # Pre-LN: x = x + Attn(LN(x)); x = x + MLP(LN(x))
+
+class PatchEmbedding(Layer):
+    def __init__(self, in_channels=1, patch_size=8, dim=64, name=None)
+    # (N,C,H,W) -> (N,L,D)，L=(H/p)(W/p)
+
+class ViTRegressor(Layer):
+    def __init__(self, img_size=64, patch_size=8, dim=64, depth=3,
+                 heads=4, mlp_ratio=2, in_channels=1, name='vit')
+    # forward: patch_embed -> [CLS]+pos -> blocks -> LN -> CLS -> Linear -> Tanh
+    # attention_maps(index=0) -> (N,H,L+1,L+1)（需先 forward 一次）
+
+def build_vit(img_size=64, patch_size=8, dim=48, depth=2,
+              heads=4, mlp_ratio=2, in_channels=1) -> ViTRegressor
+    # DonkeyCar 默认配置：44,353 参数（与 CNN 44,426 基本对齐）
+```
+
+**broadcast_add 对齐规则补充**：`(F,)` 偏置对 4D 卷积特征图按通道维
+补成 `(1,F,1,1)`；对 3D 序列 `(N,L,D)` 及更高维按最后一维补成 `(1,...,1,F)`。

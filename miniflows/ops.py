@@ -23,6 +23,7 @@ miniflows/ops.py —— MiniFlows 算子库（函数式接口，闭包注册 _ba
     relu:     y = max(0,x)    dL/dx += (x > 0)·g
     sigmoid:  y = 1/(1+e⁻ˣ)   dL/dx += y(1-y)·g
     tanh:     y = tanh(x)     dL/dx += (1 - y²)·g
+    gelu:     y = 0.5x(1+tanh(k(x+0.044715x³)))  （tanh 近似）
     softmax:  y = e^{z-max}/Σe^{z-max}    dL/dz += y·(g - Σ(g·y))  （雅可比对角化技巧）
     conv2d:   im2col 展开成矩阵乘，反向 dW = colᵀ·g、dx = col2im(g·Wᵀ)
     maxpool:  反向只把梯度放到前向最大值位置（记录 argmax）
@@ -243,15 +244,19 @@ def broadcast_add(a, b):
 
     反向与 add 相同：对 b 的梯度沿所有广播轴求和（unbroadcast 完成）。
 
-    特例：当 a 是 (N,C,H,W) 而 b 是 (F,) 时，按"通道偏置"语义把 b
-    视作 (1,F,1,1)。numpy 原生广播会把 (F,) 对齐到最后一维 W，
-    这不是我们想要的神经网络语义，所以这里显式 reshape。
+    (F,) 偏置的对齐规则（这是 numpy 原生广播做不到的神经网络语义）：
+        a 为 4D 卷积特征图 (N,C,H,W) -> b 补成 (1,F,1,1)，与通道维对齐；
+        a 为 3D 序列 (N,L,D) 或更高维 -> b 补成 (1,...,1,F)，与最后一维对齐。
+    第 2 条是 Transformer 的 Linear 必需的：序列特征是 (N,L,D)，
+    偏置必须对齐 D，而不能对齐中间的 L。
     """
     a, b = _as_node(a), _as_node(b)
-    # (F,) + 4D 卷积特征图 -> (1,F,1,1)，与通道维对齐
     if b.data.ndim == 1 and a.data.ndim > 2:
         target_shape = [1] * a.data.ndim
-        target_shape[1] = b.data.shape[0]      # 第 1 维是通道维 C
+        if a.data.ndim == 4:                   # 卷积特征图：通道维（第 1 维）
+            target_shape[1] = b.data.shape[0]
+        else:                                  # 序列/高维张量：最后一维
+            target_shape[-1] = b.data.shape[0]
         b = reshape(b, tuple(target_shape))     # reshape 自带反向，偏置梯度可回传
     return _broadcast_add_impl(a, b, 'BroadcastAdd')
 
@@ -493,6 +498,98 @@ def softmax(x, axis=-1):
 # ============================================================================
 #                                卷积 / 池化
 # ============================================================================
+def gelu(x):
+    """GELU 激活（tanh 近似，Transformer 标配）：
+        y = 0.5·x·(1 + tanh(k·(x + 0.044715·x³)))，k = √(2/π)
+
+    反向：令 t=tanh(u)，u=k(x+0.044715x³)，则
+        dy/dx = 0.5(1+t) + 0.5·x·(1-t²)·k·(1+3·0.044715·x²)
+    说明：精确 GELU 需要 erf，numpy 无内置导数；tanh 近似是 ViT/BERT 常用实现，
+    与精确值最大差约 1e-3，对训练无实质影响。
+    """
+    x = _as_node(x)
+    k = np.sqrt(2.0 / np.pi)
+    u = k * (x.data + 0.044715 * x.data ** 3)     # 近似多项式的内层
+    t = np.tanh(u)                                # 缓存 tanh，反向复用
+    out = Node(0.5 * x.data * (1.0 + t), requires_grad=x.requires_grad)
+    _bind(out, [x], 'GELU')
+
+    def _backward():
+        if x.requires_grad:
+            du = k * (1.0 + 3.0 * 0.044715 * x.data ** 2)  # du/dx
+            dy = 0.5 * (1.0 + t) + 0.5 * x.data * (1.0 - t ** 2) * du
+            x.grad += dy * out.grad
+    out._backward = _backward
+    return out
+
+
+def concat(nodes, axis=0):
+    """沿指定轴拼接多个节点：y = concat([a,b,...], axis)。
+
+    反向：按各输入在该轴上的长度切分上游梯度，分别累加回去。
+    用途：ViT 把 [CLS] token 拼到 patch 序列前面。
+    """
+    nodes = [_as_node(n) for n in nodes]
+    if not nodes:
+        raise ValueError('concat 至少需要一个节点')
+    ndim = nodes[0].data.ndim
+    ax = axis if axis >= 0 else axis + ndim
+    out = Node(np.concatenate([n.data for n in nodes], axis=ax),
+               requires_grad=any(n.requires_grad for n in nodes))
+    _bind(out, nodes, 'Concat')
+    sizes = [n.data.shape[ax] for n in nodes]     # 每个输入在该轴上的长度
+
+    def _backward():
+        # np.split 的切分点 = 长度的累加前缀（去掉最后一个）
+        pieces = np.split(out.grad, np.cumsum(sizes)[:-1], axis=ax)
+        for n, g in zip(nodes, pieces):
+            if n.requires_grad:
+                n.grad += g
+    out._backward = _backward
+    return out
+
+
+def broadcast_to(x, shape):
+    """把节点广播到目标形状（只读扩展，不复制前向数据）。
+
+    反向：沿被扩展的轴把梯度求和还原（复用 unbroadcast）。
+    用途：把 (1,1,D) 的 [CLS] token 扩展到 (N,1,D)。
+    """
+    x = _as_node(x)
+    out = Node(np.broadcast_to(x.data, shape).copy(),   # copy: 避免只读数组
+               requires_grad=x.requires_grad)
+    _bind(out, [x], 'BroadcastTo')
+
+    def _backward():
+        if x.requires_grad:
+            x.grad += unbroadcast(out.grad, x.data.shape)
+    out._backward = _backward
+    return out
+
+
+def select(x, index, axis):
+    """沿 axis 取第 index 个切片（整数索引），如 select(x, 0, axis=1) 取 [CLS]。
+
+    反向：新建与 x 同形的零梯度，把上游梯度散射到被选中的切片。
+    """
+    x = _as_node(x)
+    ndim = x.data.ndim
+    ax = axis if axis >= 0 else axis + ndim
+    slicer = [slice(None)] * ndim
+    slicer[ax] = index
+    key = tuple(slicer)
+    out = Node(np.array(x.data[key], copy=True), requires_grad=x.requires_grad)
+    _bind(out, [x], 'Select')
+
+    def _backward():
+        if x.requires_grad:
+            g = np.zeros_like(x.data)             # 未被选中的位置梯度为 0
+            g[key] += out.grad
+            x.grad += g
+    out._backward = _backward
+    return out
+
+
 def conv2d(x, W, b=None, stride=1, padding=0):
     """二维卷积（im2col + 大矩阵乘实现，性能关键）。
 
