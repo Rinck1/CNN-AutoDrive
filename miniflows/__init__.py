@@ -80,6 +80,11 @@ from .transformer import (
 )
 
 # ---------------------------------------------------------------------------
+# ResNet 组件
+# ---------------------------------------------------------------------------
+from .resnet import GroupNorm2D, BasicBlock, ResNetRegressor, build_resnet
+
+# ---------------------------------------------------------------------------
 # 损失函数与正则
 # ---------------------------------------------------------------------------
 from .losses import MSELoss, BCEWithLogitsLoss, CrossEntropyLoss, l2_penalty
@@ -121,6 +126,8 @@ __all__ = [
     # Transformer / ViT
     "LayerNorm", "GELU", "MultiHeadSelfAttention", "TransformerBlock",
     "PatchEmbedding", "ViTRegressor", "build_vit",
+    # ResNet
+    "GroupNorm2D", "BasicBlock", "ResNetRegressor", "build_resnet",
     # 损失
     "MSELoss", "BCEWithLogitsLoss", "CrossEntropyLoss", "l2_penalty",
     # 优化器

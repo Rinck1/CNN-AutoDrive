@@ -348,3 +348,32 @@ def build_vit(img_size=64, patch_size=8, dim=48, depth=2,
 
 **broadcast_add 对齐规则补充**：`(F,)` 偏置对 4D 卷积特征图按通道维
 补成 `(1,F,1,1)`；对 3D 序列 `(N,L,D)` 及更高维按最后一维补成 `(1,...,1,F)`。
+
+
+## 15. miniflows/resnet.py —— ResNet 扩展
+
+```python
+class GroupNorm2D(Layer):
+    def __init__(self, num_channels, num_groups=8, eps=1e-5, name=None)
+    # (N,C,H,W) -> reshape (N,G,C/G,H,W) -> 组内 mean/var -> 仿射
+    # 无 running stats；训练/评估一致；named_params -> gamma/beta
+
+class BasicBlock(Layer):
+    def __init__(self, in_channels, out_channels, stride=1,
+                 num_groups=None, name=None)
+    # y = ReLU(GN(Conv3x3(ReLU(GN(Conv3x3(x))))) + shortcut(x))
+    # stride!=1 或通道变化时 shortcut = 1x1 Conv + GroupNorm
+
+class ResNetRegressor(Layer):
+    def __init__(self, in_channels=1, c0=8, widths=(8,16,32),
+                 blocks=(2,2,2), num_groups=None, name='resnet')
+    # Stem(Conv5x5 s2 + GN + ReLU) -> 3 stages -> GlobalAvgPool -> Linear -> Tanh
+
+def build_resnet(in_channels=1, c0=8, widths=(8,16,32),
+                 blocks=(2,2,2), num_groups=None) -> ResNetRegressor
+    # 默认 44,337 参数（CNN 44,426 / ViT 44,353）
+```
+
+**设计说明**：用 GroupNorm 替代 BatchNorm，因为当前 `save_model` 只保存
+`named_params()`，没有 BN running stats 的持久化；GroupNorm 无状态，
+训练/评估一致，保存/加载可逐位复现。

@@ -8,7 +8,7 @@
 > 关键代码行有行内中文注释，方便课程答辩逐行讲解。
 >
 > **怎么读代码**：从 [`docs/阅读指南.md`](docs/阅读指南.md) 开始，
-> 内含 4 条阅读路线（用框架 / 懂原理 / 复现审核 / 答辩速成）与 30 份单文件指南。
+> 内含 4 条阅读路线（用框架 / 懂原理 / 复现审核 / 答辩速成）与 34 份单文件指南。
 
 ---
 
@@ -22,13 +22,15 @@
 | 3) 鸢尾花 + MNIST | MLP 93.33%；自研 CNN 92.85% | `applications/iris.py`、`applications/mnist.py` |
 | 4) DonkeyCar 自动驾驶 | 合成赛道 → 转向角回归；演示 + 严格评测（5 种子/鲁棒性/多赛道闭环） | `applications/donkeycar.py`、`donkeycar_eval.py` |
 | ★ 额外：DonkeyCar ViT 版本 | 自研 Vision Transformer（patch/注意力/LayerNorm），与 CNN 同协议对比 | `miniflows/transformer.py`、`applications/donkeycar_vit.py` |
+| ★ 额外：DonkeyCar ResNet 版本 | 自研 BasicBlock+GroupNorm，同协议三方对比 | `miniflows/resnet.py`、`applications/donkeycar_resnet.py` |
+| ★ 额外：调参与消融 | 数据增强 / 优化器 / 闭环后处理三组实验与讨论 | `experiments/tune_donkeycar.py` |
 | 5) 需求/可行性/详细设计/实验报告 | 四份中文文档 + 审核分工 | `docs/` |
 | ★ 扩展① 计算图可视化 | 纯 matplotlib 分层 DAG（不依赖 graphviz） | `miniflows/visualization.py`、`experiments/exp1_graph_viz.py` |
 | ★ 扩展② 自动求导 + 梯度检验 | 中心差分 vs 解析梯度，17 项全部通过 | `miniflows/autodiff.py`、`experiments/exp2_grad_check.py` |
 | ★ 扩展③ 异常训练分析 | 过拟合 / 梯度消失 / 梯度爆炸 / 学习率震荡 | `experiments/exp3_training_analysis.py` |
 | ★ 扩展④ 数据预处理模块 | 标准化 / one-hot / 分层划分 / MNIST 加载 / 平移增强 | `miniflows/data.py`、`experiments/exp4_preprocess_demo.py` |
 | ★ 扩展⑤ 框架优化功能 | 动量、Dropout、L2、早停、学习率调度、模型持久化 | `miniflows/utils.py`、`experiments/exp5_optimizations.py` |
-| 工程质量 | API 契约 + 三套单元测试 + 全中文注释 | `docs/API契约.md`、`tests/` |
+| 工程质量 | API 契约 + 四套单元测试 + 全中文注释 | `docs/API契约.md`、`tests/` |
 
 **设计理念**：仿 Keras 的极简用法——`Sequential([...])` 搭网络、
 `Trainer(model, loss, optim).train(X, y)` 训练，建图、反向传播、模式切换全部自动完成。
@@ -46,6 +48,8 @@
 | DonkeyCar（演示） | 测试 MAE | 0.0446（测试集兼作验证，偏乐观） |
 | DonkeyCar（严格评测） | 5 种子测试 MAE | **0.0534±0.0069**；同分布闭环 100%、极端赛道 0%、噪声闭环 100%；单帧约 0.5 ms |
 | DonkeyCar ViT | 5 种子测试 MAE | **0.0520±0.0051**（CNN 0.0534，差异在噪声内）；参数量 44,353；单帧 6.88 ms |
+| DonkeyCar ResNet | 5 种子测试 MAE | **0.0308±0.0045**（明显优于 CNN/ViT）；参数量 44,337；单帧 8.67 ms |
+| DonkeyCar 调参（增强） | 干净 MAE | 0.0572 → **0.0453**（2 种子）；最差扰动 0.1568 → 0.0981 |
 | 保存/加载往返 | 预测最大差 | **0.0** |
 
 ---
@@ -62,8 +66,8 @@
 │   ├── 需求分析与可行性分析.md       # 文档①
 │   ├── 详细设计.md                  # 文档②（架构/算法/测试）
 │   ├── 实验报告.md                  # 文档③（结果汇总，内嵌图片）
-│   ├── 阅读指南.md                  # 总纲：阅读顺序、依赖图、30 份指南索引
-│   ├── guide/                       # 每个代码文件一份阅读指南（30 份）
+│   ├── 阅读指南.md                  # 总纲：阅读顺序、依赖图、34 份指南索引
+│   ├── guide/                       # 每个代码文件一份阅读指南（34 份）
 │   └── 审核分工.md                  # 六人审核分工、任务卡与通过标准
 ├── miniflows/                       # ===== 自研框架本体（纯 numpy）=====
 │   ├── __init__.py                  # 顶层 API 导出（Sequential/Trainer/Adam/...）
@@ -77,13 +81,15 @@
 │   ├── visualization.py             # 计算图可视化 + 训练曲线（扩展①）
 │   ├── trainer.py                   # Keras 风格训练器（history / callbacks）
 │   ├── utils.py                     # 早停 / 学习率调度 / 模型存取（扩展⑤）
-│   └── transformer.py               # ViT：LayerNorm/GELU/MHSA/TransformerBlock/PatchEmbedding
+│   ├── transformer.py               # ViT：LayerNorm/GELU/MHSA/TransformerBlock/PatchEmbedding
+│   └── resnet.py                    # ResNet：GroupNorm/BasicBlock/ResNetRegressor
 ├── experiments/                     # ===== 五大扩展项演示 =====
 │   ├── exp1_graph_viz.py            # 扩展①：计算图可视化
 │   ├── exp2_grad_check.py           # 扩展②：梯度数值检验
 │   ├── exp3_training_analysis.py    # 扩展③：异常训练分析
 │   ├── exp4_preprocess_demo.py      # 扩展④：预处理与增强
-│   └── exp5_optimizations.py        # 扩展⑤：框架优化功能
+│   ├── exp5_optimizations.py        # 扩展⑤：框架优化功能
+│   └── tune_donkeycar.py            # DonkeyCar 调参：增强/优化器/闭环后处理
 ├── applications/                    # ===== 应用任务 =====
 │   ├── linear_regression.py         # 线性回归（MBGD vs Adam）
 │   ├── logistic_regression.py       # 逻辑回归（BCEWithLogits）
@@ -91,18 +97,20 @@
 │   ├── mnist.py                     # MNIST：自研 LeNet 风格 CNN
 │   ├── donkeycar.py                 # DonkeyCar：合成赛道 → 转向角 + 闭环仿真
 │   ├── donkeycar_eval.py            # DonkeyCar 严格评测（5 种子/鲁棒性/多赛道闭环）
-│   └── donkeycar_vit.py             # DonkeyCar ViT 版本（同协议对比 + 注意力可视化）
+│   ├── donkeycar_vit.py             # DonkeyCar ViT 版本（同协议对比 + 注意力可视化）
+│   └── donkeycar_resnet.py          # DonkeyCar ResNet 版本（同协议三方对比）
 ├── pytorch_benchmark/
 │   ├── lenet5.py                    # PyTorch 版 LeNet-5（与自研结构一致）
 │   └── train_lenet.py               # 同数据同超参训练 + 自动对比表
 ├── tests/
 │   ├── test_core.py                 # 框架核心测试（梯度检验/训练/CNN）
 │   ├── test_infra.py                # 基础设施测试（数据/工具/保存加载）
-│   └── test_transformer.py          # ViT 组件测试（新算子/注意力/LayerNorm/全参数梯度）
+│   ├── test_transformer.py          # ViT 组件测试（新算子/注意力/LayerNorm/全参数梯度）
+│   └── test_resnet.py               # ResNet 组件测试（GroupNorm/残差/全参数梯度/保存加载）
 ├── outputs/                         # 所有实验产物（图片/报告/模型）
 │   ├── exp1/  exp2/  exp3/  exp4/  exp5/
 │   ├── linear_regression/  logistic_regression/  iris/
-│   └── mnist/  pytorch_benchmark/  donkeycar/  donkeycar_vit/
+│   └── mnist/  pytorch_benchmark/  donkeycar/  donkeycar_vit/  donkeycar_resnet/  tuning/
 └── data/                            # 数据集缓存（自动创建，已加入 .gitignore）
     └── mnist/                       # MNIST idx.gz 缓存（首次运行自动下载）
 ```
@@ -144,6 +152,7 @@ pip install -r requirements.txt
 python tests/test_core.py         # 核心框架：算子形状、梯度检验、MLP/CNN 训练
 python tests/test_infra.py        # 基础设施：数据缩放、划分、DataLoader、早停、保存加载
 python tests/test_transformer.py  # ViT：GELU/concat/broadcast/select 梯度、注意力、LayerNorm
+python tests/test_resnet.py       # ResNet：GroupNorm、残差、全参数梯度、保存加载
 ```
 
 预期末尾分别输出 `✓ 核心框架全部测试通过`、`结果: 9/9 通过` 与
@@ -174,6 +183,9 @@ python applications/donkeycar_eval.py          # 严格评测：5 种子/鲁棒�
 python applications/donkeycar_eval.py --quick  # 严格评测快速自检（约 30 秒）
 python applications/donkeycar_vit.py           # ViT 版本（5 种子，约 6~10 分钟）
 python applications/donkeycar_vit.py --quick   # ViT 快速自检（约 1 分钟）
+python applications/donkeycar_resnet.py        # ResNet 版本（5 种子，约 10~15 分钟）
+python applications/donkeycar_resnet.py --quick # ResNet 快速自检（约 2 分钟）
+python experiments/tune_donkeycar.py           # 增强/优化器/闭环后处理调参（约 10~15 分钟）
 ```
 
 ### 4.4 PyTorch 同结构对比
@@ -235,6 +247,56 @@ ViT-Tiny：patch=8、dim=48、depth=2、heads=4，参数量 **44,353**（CNN 44,
 （底部遮挡 MAE 0.5354 vs 0.0885，约 6 倍；亮度 -0.2 为 0.5385 vs 0.0824）。
 注意力图显示 [CLS] 主要关注道路边界/中心 patch，但缺少卷积的局部性先验。
 详见 `outputs/donkeycar_vit/测试报告.md`。
+
+### 4.7 DonkeyCar ResNet 版本
+
+```bash
+python applications/donkeycar_resnet.py          # 完整（5 种子，约 10~15 分钟）
+python applications/donkeycar_resnet.py --quick  # 快速自检（约 2 分钟）
+```
+
+BasicBlock（两个 3×3 卷积 + 残差）+ GroupNorm；参数量 **44,337**，与 CNN/ViT
+基本对齐。同协议（900 样本、70/15/15、5 种子、12 轮）结果：
+
+| 指标 | ResNet | CNN | ViT |
+|---|---|---|---|
+| 开环 MAE | **0.0308±0.0045** | 0.0534±0.0069 | 0.0520±0.0051 |
+| R² | **0.991** | 0.973 | 0.974 |
+| 同分布闭环最大偏差 | **2.62px** | 2.90px | 4.29px |
+| 分布外闭环最大偏差 | 5.84px | 5.75px | 7.06px |
+| 噪声闭环（σ=0.05） | **3.37px** | 4.01px | 4.00px |
+| 极端闭环成功率 | 0% | 0% | 0% |
+| 训练/模型 | 115.1s | 5.4s | 52.1s |
+| 单帧推理 | 8.67ms | 约 0.5ms | 6.88ms |
+
+鲁棒性（开环 MAE）：亮度 -0.2 为 **0.0473**（CNN 0.0824 / ViT 0.5385）；
+底部遮挡 **0.0706**（CNN 0.0885 / ViT 0.5354）；对比度 ×1.3 为 **0.0386**
+（CNN 0.1128 / ViT 0.4386）。
+
+**结论**：ResNet 在干净精度、鲁棒性、同分布/噪声闭环上优于 CNN/ViT（分布外闭环与 CNN 基本持平），代价是训练慢
+（约 21 倍于 CNN）和推理慢（约 17 倍）。用 GroupNorm 替代 BatchNorm 是为了
+无 running stats、保存/加载可逐位复现；这不是标准 ResNet-18 的完整复刻。
+详见 `outputs/donkeycar_resnet/测试报告.md`。
+
+### 4.8 DonkeyCar 调参与消融
+
+```bash
+python experiments/tune_donkeycar.py    # 增强 / 优化器 / 闭环后处理（约 10~15 分钟）
+```
+
+受 CPU 时间限制：增强 2 种子×10 轮；超参 2 种子×6 轮；闭环复用 baseline 模型。
+**只作方向性判断，不宣称统计显著。**
+
+| 实验 | 结果 |
+|---|---|
+| A 数据增强（3×：光度+平移） | 干净 MAE **0.0572→0.0453**；最差扰动 **0.1568→0.0981**；训练时间约 2 倍 |
+| B 优化器（6 轮） | lr=3e-3 **0.0432**；lr=1e-3 0.0706；+L2 0.0695；batch=64 0.0795；lr=3e-4 0.0878 |
+| C 闭环 EMA α=0.3 | 同分布最大偏差 **3.45→3.09px**；分布外 **6.32→5.03px**；极端反而 18.37→24.84px |
+| C 转向速率限制 0.2 | 同分布 3.39px（几乎无改善） |
+
+**讨论**：增强在本轮同时提升干净精度与鲁棒性，是性价比最高的改动；lr=3e-3 在
+6 轮短程最快，但 12 轮长训仍建议从 1e-3 起步；EMA 对分布内有效，但会引入滞后，
+极端赛道反而更差。完整表格见 `outputs/tuning/调参报告.md`。
 
 ---
 
@@ -395,6 +457,8 @@ A：numpy 会把它们广播成 `(N,N)` 的笛卡尔组合，损失和梯度都�
 | `outputs/pytorch_benchmark/` | PyTorch 曲线、结果 json、`对比结果.md` |
 | `outputs/donkeycar/` | 演示图 + **严格评测**：`测试报告.md`、开环误差分布、鲁棒性、多赛道闭环、推理延迟、结果 json |
 | `outputs/donkeycar_vit/` | ViT：`测试报告.md`、模型对比、鲁棒性对比、注意力图、闭环、训练曲线、结果 json |
+| `outputs/donkeycar_resnet/` | ResNet：`测试报告.md`、三方对比、鲁棒性对比、闭环、训练曲线、结果 json |
+| `outputs/tuning/` | 调参：`调参报告.md`、增强/优化器/控制后处理三张图、结果 json |
 | `data/mnist/` | MNIST 原始数据缓存（首次运行自动生成） |
 
 ---
@@ -407,7 +471,7 @@ A：numpy 会把它们广播成 `(N,N)` 的笛卡尔组合，损失和梯度都�
 | `docs/需求分析与可行性分析.md` | 需求表、非功能需求、技术/经济/操作/法律可行性、风险对策 |
 | `docs/详细设计.md` | 架构图、数据结构、拓扑排序/反向传播/im2col/Adam/梯度检验等算法、测试结果 |
 | `docs/实验报告.md` | 任务完成情况、扩展项结果（内嵌图片）、应用指标、问题解决记录 |
-| `docs/阅读指南.md` | **代码阅读总纲**：4 条阅读路线、模块依赖图、30 份单文件指南索引、调试技巧 |
-| `docs/guide/` | 30 份单文件指南：定位/结构速览/逐段讲解/调用关系/易错点/自检问题 |
+| `docs/阅读指南.md` | **代码阅读总纲**：4 条阅读路线、模块依赖图、34 份单文件指南索引、调试技巧 |
+| `docs/guide/` | 34 份单文件指南：定位/结构速览/逐段讲解/调用关系/易错点/自检问题 |
 | `docs/审核分工.md` | 六人审核范围、每人任务卡、交叉复核、问题单规范、基线数据与签字表 |
 | `proposal.md` | 项目立项书（背景、目标、技术路线、进度、风险） |
