@@ -461,8 +461,15 @@ def load_mnist(train=True, data_dir="data"):
     返回：
         (X, y)：X (N,1,28,28) float32，像素缩放到 [0,1]；y (N,) int64 标签。
     """
-    # ---------- 第 1 级：torchvision ----------
+    # ---------- 第 1 级：torchvision（可用环境变量关闭） ----------
+    # 说明：torchvision 会加载 torch 自带的 libiomp5md.dll，与 numpy(MKL) 的
+    # OpenMP 运行库重复。纯 numpy 进程（例如 Web 看板里开线程）可能与它冲突，
+    # 报 "OMP: Error #15: Initializing libiomp5md.dll, but found ... already
+    # initialized"。设置 MINIFLOWS_NO_TORCHVISION=1 可跳过这一级，走 idx.gz 路径。
+    use_tv = os.environ.get('MINIFLOWS_NO_TORCHVISION', '0') not in ('1', 'true', 'True')
     try:
+        if not use_tv:
+            raise ImportError('已通过 MINIFLOWS_NO_TORCHVISION 禁用 torchvision')
         from torchvision.datasets import MNIST              # 延迟导入
         ds = MNIST(root=os.path.join(data_dir, "mnist"), train=train, download=True)
         # ds.data 为 uint8 (N,28,28)；转 float32、加通道维、缩放到 [0,1]

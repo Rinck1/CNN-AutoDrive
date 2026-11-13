@@ -85,6 +85,31 @@ from .transformer import (
 from .resnet import GroupNorm2D, BasicBlock, ResNetRegressor, build_resnet
 
 # ---------------------------------------------------------------------------
+# 经典 CNN（VGG / MobileNet）与规模分析
+# ---------------------------------------------------------------------------
+from .classic_cnn import (
+    DepthwiseConv2D,
+    SeparableConv2D,
+    VGG11,
+    MobileNetV1,
+    build_vgg11,
+    build_mobilenet_v1,
+    build_classic_model,
+)
+from .profiler import (
+    count_params as profile_params,
+    count_flops,
+    measure_latency,
+    measure_activation_bytes,
+    profile_model,
+)
+
+# ---------------------------------------------------------------------------
+# Web 实时看板 + 预测服务
+# ---------------------------------------------------------------------------
+from .webui import TrainingDashboard
+
+# ---------------------------------------------------------------------------
 # 损失函数与正则
 # ---------------------------------------------------------------------------
 from .losses import MSELoss, BCEWithLogitsLoss, CrossEntropyLoss, l2_penalty
@@ -128,6 +153,14 @@ __all__ = [
     "PatchEmbedding", "ViTRegressor", "build_vit",
     # ResNet
     "GroupNorm2D", "BasicBlock", "ResNetRegressor", "build_resnet",
+    # 经典 CNN
+    "DepthwiseConv2D", "SeparableConv2D", "VGG11", "MobileNetV1",
+    "build_vgg11", "build_mobilenet_v1", "build_classic_model",
+    # 规模分析
+    "profile_params", "count_flops", "measure_latency",
+    "measure_activation_bytes", "profile_model",
+    # Web 看板
+    "TrainingDashboard",
     # 损失
     "MSELoss", "BCEWithLogitsLoss", "CrossEntropyLoss", "l2_penalty",
     # 优化器

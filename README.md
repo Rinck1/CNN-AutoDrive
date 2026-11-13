@@ -23,6 +23,9 @@
 | 4) DonkeyCar 自动驾驶 | 合成赛道 → 转向角回归；演示 + 严格评测（5 种子/鲁棒性/多赛道闭环） | `applications/donkeycar.py`、`donkeycar_eval.py` |
 | ★ 额外：DonkeyCar ViT 版本 | 自研 Vision Transformer（patch/注意力/LayerNorm），与 CNN 同协议对比 | `miniflows/transformer.py`、`applications/donkeycar_vit.py` |
 | ★ 额外：DonkeyCar ResNet 版本 | 自研 BasicBlock+GroupNorm，同协议三方对比 | `miniflows/resnet.py`、`applications/donkeycar_resnet.py` |
+| ★ **Web 实时看板 + 预测服务** | SSE 实时推送损失/权重/梯度/热图；`/predict` 部署接口 | `miniflows/webui.py`、`applications/mnist_web.py` |
+| ★ **经典 CNN（VGG/MobileNet）** | 深度可分离卷积 + VGG11 风格 + MobileNetV1 | `miniflows/classic_cnn.py` |
+| ★ **跨框架资源对比** | 训练时间/吞吐/RSS/FLOPs/延迟 vs PyTorch | `pytorch_benchmark/compare_resources.py`、`miniflows/profiler.py` |
 | ★ 额外：调参与消融 | 数据增强 / 优化器 / 闭环后处理三组实验与讨论 | `experiments/tune_donkeycar.py` |
 | 5) 需求/可行性/详细设计/实验报告 | 四份中文文档 + 审核分工 | `docs/` |
 | ★ 扩展① 计算图可视化 | 纯 matplotlib 分层 DAG（不依赖 graphviz） | `miniflows/visualization.py`、`experiments/exp1_graph_viz.py` |
@@ -50,6 +53,8 @@
 | DonkeyCar ViT | 5 种子测试 MAE | **0.0520±0.0051**（CNN 0.0534，差异在噪声内）；参数量 44,353；单帧 6.88 ms |
 | DonkeyCar ResNet | 5 种子测试 MAE | **0.0308±0.0045**（明显优于 CNN/ViT）；参数量 44,337；单帧 8.67 ms |
 | DonkeyCar 调参（增强） | 干净 MAE | 0.0572 → **0.0453**（2 种子）；最差扰动 0.1568 → 0.0981 |
+| Web 看板（MNIST，2500 样本 3 轮） | 实时指标 | 验证准确率 **83.27%**；权重分布/梯度范数/遮挡热图实时可视 |
+| 跨框架资源（LeNet，3000 样本 1 轮） | 训练/推理 | 参数 44,426 完全一致；训练 **2.6×**、推理 **2.1×** 慢于 PyTorch（单线程） |
 | 保存/加载往返 | 预测最大差 | **0.0** |
 
 ---
@@ -82,7 +87,10 @@
 │   ├── trainer.py                   # Keras 风格训练器（history / callbacks）
 │   ├── utils.py                     # 早停 / 学习率调度 / 模型存取（扩展⑤）
 │   ├── transformer.py               # ViT：LayerNorm/GELU/MHSA/TransformerBlock/PatchEmbedding
-│   └── resnet.py                    # ResNet：GroupNorm/BasicBlock/ResNetRegressor
+│   ├── resnet.py                    # ResNet：GroupNorm/BasicBlock/ResNetRegressor
+│   ├── classic_cnn.py               # VGG11 / MobileNetV1 / 深度可分离卷积
+│   ├── profiler.py                  # 参数量 / FLOPs / 延迟 / 激活内存
+│   └── webui.py                     # Web 实时看板（SSE）+ 预测服务
 ├── experiments/                     # ===== 五大扩展项演示 =====
 │   ├── exp1_graph_viz.py            # 扩展①：计算图可视化
 │   ├── exp2_grad_check.py           # 扩展②：梯度数值检验
@@ -98,19 +106,23 @@
 │   ├── donkeycar.py                 # DonkeyCar：合成赛道 → 转向角 + 闭环仿真
 │   ├── donkeycar_eval.py            # DonkeyCar 严格评测（5 种子/鲁棒性/多赛道闭环）
 │   ├── donkeycar_vit.py             # DonkeyCar ViT 版本（同协议对比 + 注意力可视化）
-│   └── donkeycar_resnet.py          # DonkeyCar ResNet 版本（同协议三方对比）
+│   ├── donkeycar_resnet.py          # DonkeyCar ResNet 版本（同协议三方对比）
+│   └── mnist_web.py                 # MNIST 训练 + Web 看板 + /predict 部署
 ├── pytorch_benchmark/
 │   ├── lenet5.py                    # PyTorch 版 LeNet-5（与自研结构一致）
-│   └── train_lenet.py               # 同数据同超参训练 + 自动对比表
+│   ├── train_lenet.py               # 同数据同超参训练 + 自动对比表
+│   └── compare_resources.py         # 训练时间/内存/FLOPs/延迟跨框架对比
 ├── tests/
 │   ├── test_core.py                 # 框架核心测试（梯度检验/训练/CNN）
 │   ├── test_infra.py                # 基础设施测试（数据/工具/保存加载）
 │   ├── test_transformer.py          # ViT 组件测试（新算子/注意力/LayerNorm/全参数梯度）
-│   └── test_resnet.py               # ResNet 组件测试（GroupNorm/残差/全参数梯度/保存加载）
+│   ├── test_resnet.py               # ResNet 组件测试（GroupNorm/残差/全参数梯度/保存加载）
+│   ├── test_models.py               # 分组卷积/VGG/MobileNet/FLOPs 口径
+│   └── test_webui.py                # Web 看板与 /predict 接口测试
 ├── outputs/                         # 所有实验产物（图片/报告/模型）
 │   ├── exp1/  exp2/  exp3/  exp4/  exp5/
 │   ├── linear_regression/  logistic_regression/  iris/
-│   └── mnist/  pytorch_benchmark/  donkeycar/  donkeycar_vit/  donkeycar_resnet/  tuning/
+│   └── mnist/  pytorch_benchmark/  donkeycar/  donkeycar_vit/  donkeycar_resnet/  tuning/  web/
 └── data/                            # 数据集缓存（自动创建，已加入 .gitignore）
     └── mnist/                       # MNIST idx.gz 缓存（首次运行自动下载）
 ```
@@ -153,6 +165,8 @@ python tests/test_core.py         # 核心框架：算子形状、梯度检验�
 python tests/test_infra.py        # 基础设施：数据缩放、划分、DataLoader、早停、保存加载
 python tests/test_transformer.py  # ViT：GELU/concat/broadcast/select 梯度、注意力、LayerNorm
 python tests/test_resnet.py       # ResNet：GroupNorm、残差、全参数梯度、保存加载
+python tests/test_models.py       # 分组卷积/深度卷积/VGG/MobileNet/FLOPs 口径
+python tests/test_webui.py        # Web 看板接口：/health、/api/*、/predict
 ```
 
 预期末尾分别输出 `✓ 核心框架全部测试通过`、`结果: 9/9 通过` 与
@@ -186,6 +200,8 @@ python applications/donkeycar_vit.py --quick   # ViT 快速自检（约 1 分钟
 python applications/donkeycar_resnet.py        # ResNet 版本（5 种子，约 10~15 分钟）
 python applications/donkeycar_resnet.py --quick # ResNet 快速自检（约 2 分钟）
 python experiments/tune_donkeycar.py           # 增强/优化器/闭环后处理调参（约 10~15 分钟）
+python applications/mnist_web.py               # 打开 http://127.0.0.1:8000/ 实时看板
+python pytorch_benchmark/compare_resources.py  # 跨框架资源对比
 ```
 
 ### 4.4 PyTorch 同结构对比
@@ -297,6 +313,61 @@ python experiments/tune_donkeycar.py    # 增强 / 优化器 / 闭环后处理�
 **讨论**：增强在本轮同时提升干净精度与鲁棒性，是性价比最高的改动；lr=3e-3 在
 6 轮短程最快，但 12 轮长训仍建议从 1e-3 起步；EMA 对分布内有效，但会引入滞后，
 极端赛道反而更差。完整表格见 `outputs/tuning/调参报告.md`。
+
+### 4.9 Web 端实时训练看板与预测服务
+
+```bash
+python applications/mnist_web.py                    # LeNet + 看板 + /predict（约 20 秒）
+python applications/mnist_web.py --model vgg11 --width 0.5   # 换成 VGG11 风格
+python applications/mnist_web.py --model mobilenet --width 0.25
+python applications/mnist_web.py --load             # 只部署已保存模型，不训练
+```
+
+浏览器打开 `http://127.0.0.1:8000/`，训练过程中实时刷新：
+
+| 面板 | 内容 | 实现 |
+|---|---|---|
+| 指标卡 | 训练/验证损失、验证指标、学习率 | SSE 推送 `history` |
+| 损失曲线 | batch 级细线 + epoch 圆点，对数纵轴 | Canvas 绘制，x 轴按 batch 位置对齐 |
+| 权重分布 | 逐层直方图（可选层）+ 均值/标准差/L2 | 读参数 `data` 做 30-bin 直方图 |
+| 梯度范数 | 每层 W 的 L2，按需重算（缓存 2s） | 对样本重新 forward+backward |
+| 遮挡热图 | 8×8 遮挡后输出变化 | `/api/heatmap` 逐块遮挡 |
+
+预测服务（部署接口）：
+
+```bash
+curl -X POST http://127.0.0.1:8000/predict      -H "Content-Type: application/json"      -d "{\"image\": [[0.0, 0.3, ...], ...]}"
+# -> {"task":"classification","pred":7,"label":"7","probs":[...],"latency_ms":0.4}
+```
+
+实现说明：纯标准库 `http.server` + SSE，无 Flask/FastAPI、无前端构建；
+只监听 `127.0.0.1`；接口测试见 `tests/test_webui.py`（6 项全通过）。
+
+### 4.10 经典 CNN 与跨框架资源对比
+
+```bash
+python pytorch_benchmark/compare_resources.py --samples 3000 --epochs 1
+```
+
+| 指标 | MiniFlows | PyTorch | 比值 |
+|---|---|---|---|
+| 参数量 | 44,426 | 44,426 | 1.000× |
+| FLOPs（统一公式） | 0.57 M | 0.57 M | 1.000× |
+| 训练时间（1 轮） | 2.27 s | 0.87 s | **2.6×** |
+| 吞吐 | 1321 样本/s | 3456 样本/s | 0.38× |
+| 单帧推理 | 0.96 ms | 0.46 ms | **2.1×** |
+| 测试准确率 | 0.718 | 0.725 | — |
+
+模型库（`miniflows/classic_cnn.py`）：
+
+| 模型 | 参数量（64×64） | FLOPs | 说明 |
+|---|---|---|---|
+| VGG11 风格（width=1.0） | 208,865 | 51.7 M | 5 个卷积块 + 全局平均池化 |
+| MobileNetV1（width=0.25） | 215,921 | 23.4 M | 深度可分离卷积，FLOPs 约为 VGG 的 45% |
+| ResNet（DonkeyCar） | 44,337 | 13.9 M | BasicBlock + GroupNorm |
+
+`miniflows/profiler.py` 统一给出口径：`count_params` / `count_flops`
+（2×MACs，卷积按组内实际通道数算）/ `measure_latency` / `measure_activation_bytes`。
 
 ---
 
@@ -459,6 +530,7 @@ A：numpy 会把它们广播成 `(N,N)` 的笛卡尔组合，损失和梯度都�
 | `outputs/donkeycar_vit/` | ViT：`测试报告.md`、模型对比、鲁棒性对比、注意力图、闭环、训练曲线、结果 json |
 | `outputs/donkeycar_resnet/` | ResNet：`测试报告.md`、三方对比、鲁棒性对比、闭环、训练曲线、结果 json |
 | `outputs/tuning/` | 调参：`调参报告.md`、增强/优化器/控制后处理三张图、结果 json |
+| `outputs/web/` | Web 看板：训练好的 npz、`训练摘要.json`（指标 + 参数量 + FLOPs） |
 | `data/mnist/` | MNIST 原始数据缓存（首次运行自动生成） |
 
 ---

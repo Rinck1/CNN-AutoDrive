@@ -377,3 +377,77 @@ def build_resnet(in_channels=1, c0=8, widths=(8,16,32),
 **设计说明**：用 GroupNorm 替代 BatchNorm，因为当前 `save_model` 只保存
 `named_params()`，没有 BN running stats 的持久化；GroupNorm 无状态，
 训练/评估一致，保存/加载可逐位复现。
+
+
+## 16. miniflows/classic_cnn.py —— 经典 CNN（VGG / MobileNet）
+
+```python
+class DepthwiseConv2D(Layer):
+    def __init__(self, channels, kernel_size=3, stride=1, padding=1,
+                 init='he', name=None)
+    # W:(C,1,KH,KW)，内部调用 ops.depthwise_conv2d（向量化，非逐通道 im2col）
+
+class SeparableConv2D(Layer):
+    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1,
+                 padding=1, num_groups=None, name=None)
+    # dw → GN → ReLU → 1×1 pw → GN → ReLU
+
+class VGG11(Layer):
+    def __init__(self, in_channels=1, num_classes=10, width=1.0,
+                 num_groups=None, name='vgg11')
+    # 5 个卷积块（16/32/64/64/64 × width）+ 全局平均池化 + Linear
+
+class MobileNetV1(Layer):
+    def __init__(self, in_channels=1, num_classes=10, width=1.0,
+                 num_groups=None, name='mobilenet')
+    # stem + 13 个深度可分离块 + 全局平均池化 + Linear
+
+def build_vgg11(...); def build_mobilenet_v1(...)
+def build_classic_model(name, in_channels=1, num_classes=10, width=1.0)
+    # name ∈ {'vgg11','mobilenet','resnet'}
+```
+
+新增算子：`ops.conv2d_groups(x, W, b, stride, padding, groups)`（分组卷积）、
+`ops.depthwise_conv2d(x, W, b, stride, padding)`（深度卷积，向量化）。
+
+## 17. miniflows/profiler.py —— 规模与资源分析
+
+```python
+count_params(model) -> int
+count_flops(model, input_shape, batch=1) -> (flops, macs)   # FLOPs = 2×MACs
+measure_latency(model, input_shape, batch=1, warmup=3, repeat=20)
+    # -> {'mean_ms','p95_ms','fps','batch'}
+measure_activation_bytes(model, input_shape, batch=1) -> int  # 前向峰值激活（下界）
+profile_model(model, input_shape, batch=1, nn_name='model')
+    # -> {'name','params','flops','macs','flops_human','latency_ms','p95_ms','fps','act_mb','input'}
+```
+
+FLOPs 口径（跨框架比较必须统一）：Conv = 2·N·OH·OW·F·Cg·KH·KW；Linear = 2·N·in·out；
+GroupNorm ≈ 5·N·C·H·W；Pool/激活 ≈ 1 FLOP/元素。
+
+## 18. miniflows/webui.py —— Web 实时看板 + 预测服务
+
+```python
+class TrainingDashboard:
+    def __init__(self, model=None, loss_fn=None, task='classification',
+                 class_names=None, host='127.0.0.1', port=8000,
+                 title='MiniFlows 实时训练看板', max_batches=300)
+    def start(self, block=False) -> str      # 启动服务，返回 URL
+    def stop(self); def serve_forever(self)
+    def callback(self, state) -> bool        # Trainer 回调（永远返回 False）
+    def log_batch(self, loss)                # batch 级损失
+    def set_sample(self, x, y=None)          # 热图/预测用的样本
+    def snapshot(self) -> dict               # 指标 + 权重直方图 + 梯度范数
+    def occlusion_heatmap(self, grid=8, patch_ratio=0.25) -> dict
+    def predict(self, image) -> dict          # 部署接口的 Python 侧
+
+# HTTP 路由
+GET  /               看板页面（自包含 HTML/JS，SSE）
+GET  /events         text/event-stream 推送
+GET  /api/snapshot   完整快照 JSON
+GET  /api/heatmap?grid=8  遮挡敏感性热图
+POST /predict        JSON {'image': [[...]]} -> 预测结果
+GET  /health         {'ok': True, 'epochs': N}
+```
+
+限制：仅监听 127.0.0.1；不做鉴权，适合本地演示/课程验收。
