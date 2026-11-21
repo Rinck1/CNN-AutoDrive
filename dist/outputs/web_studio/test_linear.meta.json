@@ -1,0 +1,15 @@
+{
+  "task": "linear",
+  "arch": "linear",
+  "input_shape": [
+    1
+  ],
+  "need_upsample": false,
+  "class_names": null,
+  "model_info": {
+    "params": 2,
+    "flops": 2,
+    "latency_ms": 0.031,
+    "tag": "linear / linear"
+  }
+}

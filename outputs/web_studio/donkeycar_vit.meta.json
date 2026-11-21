@@ -1,0 +1,17 @@
+{
+  "task": "donkeycar",
+  "arch": "vit",
+  "input_shape": [
+    1,
+    64,
+    64
+  ],
+  "need_upsample": false,
+  "class_names": null,
+  "model_info": {
+    "params": 44353,
+    "flops": 2840416,
+    "latency_ms": 3.262,
+    "tag": "donkeycar / vit"
+  }
+}

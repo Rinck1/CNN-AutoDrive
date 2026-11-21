@@ -10,7 +10,7 @@ donkeycar_resnet.py —— DonkeyCar 的 ResNet 版本（与 CNN / ViT 同协议
     Stage2: 2×BasicBlock(8→16, s2)       16×16
     Stage3: 2×BasicBlock(16→32, s2)      8×8
     GlobalAvgPool → Linear(32→1) → Tanh
-    参数量 44,337（CNN 44,426 / ViT 44,353，基本对齐）
+    参数量 44,337（CNN 38,369 / ViT 44,353，同量级）
 
 为什么用 GroupNorm：
     MiniFlows 暂无 BatchNorm 的 running stats 持久化；GroupNorm 不依赖 batch 统计，
@@ -62,11 +62,16 @@ from miniflows.utils import save_model, load_model, count_params
 
 from applications.donkeycar import generate_track_dataset, _render_from_row_offsets
 from applications.donkeycar import IMG_SIZE, ROAD_HALF_W
+from applications.donkeycar import build_model as build_donkeycar_cnn
 from applications.donkeycar_eval import (split_indices, regression_metrics,
                                          predict_array, perturb_images,
                                          ROBUSTNESS_KINDS, closed_loop_run,
                                          sample_tracks, track_speed,
                                          make_predict_fn)
+
+# 三方架构的真实参数量（按模型定义实算）。此前文档沿用了 MNIST LeNet 的 44,426，
+# 与 DonkeyCar CNN 实际参数量对不上，会影响「参数量对齐」的公平性论断。
+CNN_PARAMS = count_params(build_donkeycar_cnn())
 
 OUT_DIR = os.path.join(_ROOT, 'outputs', 'donkeycar_resnet')
 os.makedirs(OUT_DIR, exist_ok=True)
@@ -462,7 +467,7 @@ def write_report(result, res_open, res_rob, res_cl, cnn, vit, suffix=''):
          '900 样本、70/15/15、5 种子、12 轮、Adam lr=1e-3，测试集不参与训练/选模型。\n',
          '## 一、模型\n',
          f'- ResNet：Stem + 3 stage × 2 BasicBlock（GroupNorm + 残差）\n'
-         f'- 参数量：**{result["params"]:,}**（CNN 44,426 / ViT 44,353）\n'
+         f'- 参数量：**{result["params"]:,}**（CNN {CNN_PARAMS:,} / ViT 44,353）\n'
          f'- 训练：平均 {result["train_seconds_mean"]:.1f}s/模型\n',
          '## 二、开环测试\n',
          '| 模型 | MAE | R² | P95 |',

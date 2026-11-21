@@ -66,6 +66,7 @@
 ├── README.md                        # 本文件（项目主页）
 ├── requirements.txt                 # 依赖清单
 ├── common_setup.py                  # 公共环境初始化（UTF-8/种子/中文字体/Agg）
+├── web_app.py                       # Web Studio 快捷启动入口（python web_app.py --port 8000）
 ├── docs/
 │   ├── API契约.md                   # 全体模块的唯一接口规范 v1.0
 │   ├── 需求分析与可行性分析.md       # 文档①
@@ -107,7 +108,9 @@
 │   ├── donkeycar_eval.py            # DonkeyCar 严格评测（5 种子/鲁棒性/多赛道闭环）
 │   ├── donkeycar_vit.py             # DonkeyCar ViT 版本（同协议对比 + 注意力可视化）
 │   ├── donkeycar_resnet.py          # DonkeyCar ResNet 版本（同协议三方对比）
-│   └── mnist_web.py                 # MNIST 训练 + Web 看板 + /predict 部署
+│   ├── mnist_web.py                 # MNIST 训练 + Web 看板 + /predict 部署
+│   ├── web_studio.py                # Web Studio：全功能交互式工作台（训练/推理/实验室/历史/对比）
+│   └── web_studio_ui.html           # Web Studio 前端（零 CDN 自包含，改界面免重启）
 ├── pytorch_benchmark/
 │   ├── lenet5.py                    # PyTorch 版 LeNet-5（与自研结构一致）
 │   ├── train_lenet.py               # 同数据同超参训练 + 自动对比表
@@ -118,11 +121,13 @@
 │   ├── test_transformer.py          # ViT 组件测试（新算子/注意力/LayerNorm/全参数梯度）
 │   ├── test_resnet.py               # ResNet 组件测试（GroupNorm/残差/全参数梯度/保存加载）
 │   ├── test_models.py               # 分组卷积/VGG/MobileNet/FLOPs 口径
-│   └── test_webui.py                # Web 看板与 /predict 接口测试
+│   ├── test_webui.py                # Web 看板与 /predict 接口测试
+│   └── test_web_studio.py           # Web Studio 端到端测试（12 组：训练/扰动/历史/报告）
 ├── outputs/                         # 所有实验产物（图片/报告/模型）
 │   ├── exp1/  exp2/  exp3/  exp4/  exp5/
 │   ├── linear_regression/  logistic_regression/  iris/
-│   └── mnist/  pytorch_benchmark/  donkeycar/  donkeycar_vit/  donkeycar_resnet/  tuning/  web/
+│   ├── mnist/  pytorch_benchmark/  donkeycar/  donkeycar_vit/  donkeycar_resnet/  tuning/  web/
+│   └── web_studio/                  # Web Studio 产物（runs.json 运行历史 / 权重 / 计算图）
 └── data/                            # 数据集缓存（自动创建，已加入 .gitignore）
     └── mnist/                       # MNIST idx.gz 缓存（首次运行自动下载）
 ```
@@ -246,7 +251,7 @@ python applications/donkeycar_vit.py           # 完整（5 种子，约 6~10 �
 python applications/donkeycar_vit.py --quick   # 快速自检（约 1 分钟）
 ```
 
-ViT-Tiny：patch=8、dim=48、depth=2、heads=4，参数量 **44,353**（CNN 44,426），
+ViT-Tiny：patch=8、dim=48、depth=2、heads=4，参数量 **44,353**（CNN 38,369），
 同协议（900 样本、70/15/15、5 种子、12 轮）结果：
 
 | 指标 | ViT | CNN | 说明 |
@@ -343,7 +348,52 @@ curl -X POST http://127.0.0.1:8000/predict      -H "Content-Type: application/js
 实现说明：纯标准库 `http.server` + SSE，无 Flask/FastAPI、无前端构建；
 只监听 `127.0.0.1`；接口测试见 `tests/test_webui.py`（6 项全通过）。
 
-### 4.10 经典 CNN 与跨框架资源对比
+### 4.10 MiniFlows Web Studio（全功能交互式工作台）
+
+```bash
+python web_app.py                      # 启动（等价于 python applications/web_studio.py）
+python web_app.py --port 8080          # 换端口
+```
+
+浏览器打开 `http://127.0.0.1:8000/`。零第三方 Web 依赖：仅 Python 标准库
+`http.server` + SSE + 自包含 Canvas 前端，前端文件 `applications/web_studio_ui.html`
+每次请求实时读取，**改界面无需重启服务**。
+
+五个页面：
+
+| 页面 | 能力 |
+|---|---|
+| 一键训练 | 5 类任务 × 5 种架构；可调优化器 / 学习率 / 轮数 / batch / 早停 / 学习率衰减 / 全局梯度裁剪 / L2 正则 / 动量 / 特征缩放 / 3× 数据增强；SSE 实时推送损失、准确率或 MAE、学习率、各层权重直方图与梯度 L2 范数、任务专属预览（拟合线 / 决策边界 / 混淆矩阵 / 预测散点） |
+| 推理与仿真 | MNIST 28×28 手写画板（实时类别概率 + 8×8 遮挡热图）；DonkeyCar 赛道渲染 + 11 项视觉扰动 + 转向角仪表盘；**11 项扰动鲁棒性一键扫描**（输出各扰动 MAE 与最差项排名）；闭环驾驶仿真（模型闭环 vs 不转向开环轨迹对比） |
+| 原理实验室 | ① 计算图自动绘制（MLP / 共享分支 DAG / ResNet BasicBlock）② 17 项算子数值梯度检验 ③ 四类异常训练与修复实时对照 ④ 特征标准化无泄露对照 |
+| 运行历史 | **每次训练自动落盘**（配置 + 曲线 + 指标），支持多轮曲线叠加对比与明细表逐条删除；**一键导出实验报告** |
+| 对比总览 | 三架构同协议评测表、PyTorch 资源对比（每项指标独立标尺）、11 项扰动鲁棒性对比、闭环偏差对比 |
+
+接口一览：
+
+```bash
+curl http://127.0.0.1:8000/api/snapshot          # 训练状态快照
+curl http://127.0.0.1:8000/api/runs              # 训练运行历史（多曲线对比数据）
+curl http://127.0.0.1:8000/api/report.md          # 实验报告（Markdown）
+curl -O http://127.0.0.1:8000/api/report.zip      # 实验报告（Markdown + charts/*.png）
+
+curl -X POST http://127.0.0.1:8000/api/train/start \
+     -H "Content-Type: application/json" \
+     -d '{"task":"donkeycar","arch":"resnet_gn","epochs":6,"lr":0.001}'
+curl -X POST http://127.0.0.1:8000/api/donkeycar/robustness -d '{}' -H "Content-Type: application/json"
+curl -X POST http://127.0.0.1:8000/predict -H "Content-Type: application/json" -d "{\"image\": [[0.0, 0.3, ...], ...]}"
+```
+
+产物落盘：`outputs/web_studio/`（`runs.json` 运行历史、`*.npz` 保存的权重、
+`*.meta.json` 元信息、`graph_*.png` 计算图）。
+
+端到端测试（12 组，含扰动回归、形状校验、历史记录、报告导出）：
+
+```bash
+python tests/test_web_studio.py
+```
+
+### 4.11 经典 CNN 与跨框架资源对比
 
 ```bash
 python pytorch_benchmark/compare_resources.py --samples 3000 --epochs 1

@@ -28,7 +28,7 @@ build_vit(img_size=64, patch_size=8, dim=48, depth=2,
 ```
 
 - 64 个 patch + [CLS]；
-- 44,353 参数，与 CNN 44,426 基本对齐；
+- 44,353 参数，与 CNN 38,369 同量级；
 - 输出 `(N,1)`，Tanh 到 [-1,1]。
 
 ### 3.2 训练协议

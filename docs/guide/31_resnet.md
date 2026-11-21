@@ -14,7 +14,7 @@ Stage3: 2×BasicBlock(16→32, s2)                    8×8
 GlobalAvgPool → Linear(32→1) → Tanh
 ```
 
-参数量 44,337，与 CNN 44,426 / ViT 44,353 基本对齐。
+参数量 44,337，与 CNN 38,369 / ViT 44,353 同量级。
 
 ## 2. 结构速览
 

@@ -1,0 +1,389 @@
+[
+ {
+  "id": 1,
+  "task": "donkeycar",
+  "arch": "resnet_gn",
+  "label": "donkeycar · resnet_gn",
+  "cfg": {
+   "epochs": 12,
+   "samples": 900,
+   "lr": 0.001,
+   "batch_size": 32,
+   "optimizer": "adam",
+   "clip_norm": 0,
+   "l2_reg": 0,
+   "scale": "standard",
+   "seed": 42,
+   "augment": true,
+   "early_stop": true,
+   "lr_schedule": true
+  },
+  "epoch": [
+   1,
+   2,
+   3,
+   4
+  ],
+  "train_loss": [
+   0.04429,
+   0.00252,
+   0.001436,
+   0.001021
+  ],
+  "val_loss": [
+   0.003592,
+   0.001746,
+   0.001602,
+   0.001294
+  ],
+  "val_metric": [
+   0.044633,
+   0.031658,
+   0.030495,
+   0.028583
+  ],
+  "lr": [
+   0.001,
+   0.001,
+   0.001,
+   0.001
+  ],
+  "metric_name": "MAE",
+  "params": 44337,
+  "flops": 13887488,
+  "latency_ms": 17.023,
+  "elapsed_s": 174.6,
+  "final_metric": 0.02858339487595632,
+  "best_metric": 0.02858339487595632,
+  "status": "stopped",
+  "n_train": 2160,
+  "n_val": 180,
+  "finished_at": 1795187593.4613097,
+  "finished_at_str": "2026-11-20 15:13:13"
+ },
+ {
+  "id": 2,
+  "task": "donkeycar",
+  "arch": "cnn",
+  "label": "donkeycar · cnn",
+  "cfg": {
+   "epochs": 3,
+   "samples": 240,
+   "lr": 0.001,
+   "batch_size": 32,
+   "optimizer": "adam",
+   "clip_norm": 0,
+   "l2_reg": 0,
+   "scale": "standard",
+   "seed": 42,
+   "augment": true,
+   "early_stop": true,
+   "lr_schedule": true
+  },
+  "epoch": [
+   1,
+   2,
+   3
+  ],
+  "train_loss": [
+   0.166128,
+   0.029369,
+   0.012895
+  ],
+  "val_loss": [
+   0.037442,
+   0.011293,
+   0.007903
+  ],
+  "val_metric": [
+   0.165816,
+   0.086959,
+   0.06946
+  ],
+  "lr": [
+   0.001,
+   0.001,
+   0.001
+  ],
+  "metric_name": "MAE",
+  "params": 38369,
+  "flops": 842705,
+  "latency_ms": 0.828,
+  "elapsed_s": 1.91,
+  "final_metric": 0.06946024411200001,
+  "best_metric": 0.06946024411200001,
+  "status": "completed",
+  "n_train": 576,
+  "n_val": 48,
+  "finished_at": 1795187632.7310538,
+  "finished_at_str": "2026-11-20 15:13:52"
+ },
+ {
+  "id": 3,
+  "task": "donkeycar",
+  "arch": "cnn",
+  "label": "donkeycar · cnn",
+  "cfg": {
+   "epochs": 6,
+   "samples": 400,
+   "lr": 0.001,
+   "batch_size": 32,
+   "optimizer": "adam",
+   "clip_norm": 0,
+   "l2_reg": 0,
+   "scale": "standard",
+   "seed": 42,
+   "augment": true,
+   "early_stop": true,
+   "lr_schedule": true
+  },
+  "epoch": [
+   1,
+   2,
+   3,
+   4,
+   5,
+   6
+  ],
+  "train_loss": [
+   0.120149,
+   0.019677,
+   0.007964,
+   0.004816,
+   0.003558,
+   0.002871
+  ],
+  "val_loss": [
+   0.039352,
+   0.012497,
+   0.007464,
+   0.004877,
+   0.004538,
+   0.00386
+  ],
+  "val_metric": [
+   0.159029,
+   0.088256,
+   0.069978,
+   0.057656,
+   0.054271,
+   0.050945
+  ],
+  "lr": [
+   0.001,
+   0.001,
+   0.001,
+   0.001,
+   0.001,
+   0.001
+  ],
+  "metric_name": "MAE",
+  "params": 38369,
+  "flops": 842705,
+  "latency_ms": 1.208,
+  "elapsed_s": 6.36,
+  "final_metric": 0.05094490681442576,
+  "best_metric": 0.05094490681442576,
+  "status": "completed",
+  "n_train": 960,
+  "n_val": 80,
+  "finished_at": 1795187694.531052,
+  "finished_at_str": "2026-11-20 15:14:54"
+ },
+ {
+  "id": 4,
+  "task": "donkeycar",
+  "arch": "cnn",
+  "label": "donkeycar · cnn",
+  "cfg": {
+   "epochs": 6,
+   "samples": 400,
+   "lr": 0.001,
+   "batch_size": 32,
+   "optimizer": "adam",
+   "clip_norm": 0,
+   "l2_reg": 0,
+   "scale": "standard",
+   "seed": 42,
+   "augment": true,
+   "early_stop": true,
+   "lr_schedule": true
+  },
+  "epoch": [
+   1,
+   2,
+   3,
+   4,
+   5,
+   6
+  ],
+  "train_loss": [
+   0.120149,
+   0.019677,
+   0.007964,
+   0.004816,
+   0.003558,
+   0.002871
+  ],
+  "val_loss": [
+   0.039352,
+   0.012497,
+   0.007464,
+   0.004877,
+   0.004538,
+   0.00386
+  ],
+  "val_metric": [
+   0.159029,
+   0.088256,
+   0.069978,
+   0.057656,
+   0.054271,
+   0.050945
+  ],
+  "lr": [
+   0.001,
+   0.001,
+   0.001,
+   0.001,
+   0.001,
+   0.001
+  ],
+  "metric_name": "MAE",
+  "params": 38369,
+  "flops": 842705,
+  "latency_ms": 1.919,
+  "elapsed_s": 6.43,
+  "final_metric": 0.05094490681442576,
+  "best_metric": 0.05094490681442576,
+  "status": "completed",
+  "n_train": 960,
+  "n_val": 80,
+  "finished_at": 1795187748.5566788,
+  "finished_at_str": "2026-11-20 15:15:48"
+ },
+ {
+  "id": 5,
+  "task": "donkeycar",
+  "arch": "resnet_gn",
+  "label": "donkeycar · resnet_gn",
+  "cfg": {
+   "epochs": 6,
+   "samples": 400,
+   "lr": 0.001,
+   "batch_size": 32,
+   "optimizer": "adam",
+   "clip_norm": 0,
+   "l2_reg": 0,
+   "scale": "standard",
+   "seed": 42,
+   "augment": true,
+   "early_stop": true,
+   "lr_schedule": true
+  },
+  "epoch": [
+   1,
+   2
+  ],
+  "train_loss": [
+   0.08151,
+   0.008728
+  ],
+  "val_loss": [
+   0.013715,
+   0.004796
+  ],
+  "val_metric": [
+   0.101777,
+   0.054604
+  ],
+  "lr": [
+   0.001,
+   0.001
+  ],
+  "metric_name": "MAE",
+  "params": 44337,
+  "flops": 13887488,
+  "latency_ms": 11.975,
+  "elapsed_s": 29.07,
+  "final_metric": 0.05460357632350209,
+  "best_metric": 0.05460357632350209,
+  "status": "stopped",
+  "n_train": 960,
+  "n_val": 80,
+  "finished_at": 1795187875.1760426,
+  "finished_at_str": "2026-11-20 15:17:55"
+ },
+ {
+  "id": 6,
+  "task": "donkeycar",
+  "arch": "cnn",
+  "label": "donkeycar · cnn",
+  "cfg": {
+   "epochs": 6,
+   "samples": 400,
+   "lr": 0.001,
+   "batch_size": 32,
+   "optimizer": "adam",
+   "clip_norm": 0,
+   "l2_reg": 0,
+   "scale": "standard",
+   "seed": 42,
+   "augment": true,
+   "early_stop": true,
+   "lr_schedule": true
+  },
+  "epoch": [
+   1,
+   2,
+   3,
+   4,
+   5,
+   6
+  ],
+  "train_loss": [
+   0.120149,
+   0.019677,
+   0.007964,
+   0.004816,
+   0.003558,
+   0.002871
+  ],
+  "val_loss": [
+   0.039352,
+   0.012497,
+   0.007464,
+   0.004877,
+   0.004538,
+   0.00386
+  ],
+  "val_metric": [
+   0.159029,
+   0.088256,
+   0.069978,
+   0.057656,
+   0.054271,
+   0.050945
+  ],
+  "lr": [
+   0.001,
+   0.001,
+   0.001,
+   0.001,
+   0.001,
+   0.001
+  ],
+  "metric_name": "MAE",
+  "params": 38369,
+  "flops": 842705,
+  "latency_ms": 0.759,
+  "elapsed_s": 6.62,
+  "final_metric": 0.05094490681442576,
+  "best_metric": 0.05094490681442576,
+  "status": "completed",
+  "n_train": 960,
+  "n_val": 80,
+  "finished_at": 1795187884.386643,
+  "finished_at_str": "2026-11-20 15:18:04"
+ }
+]

@@ -1,0 +1,1934 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MiniFlows Studio</title>
+<style>
+:root{
+  /* 设计令牌：借鉴参考项目的 shadcn 体系（近黑主色 / 柔和中性灰 / 10px 圆角） */
+  --bg:#f6f6f7;--surface:#ffffff;--surface2:#f3f3f5;--surface3:#ececf0;
+  --line:rgba(12,10,9,.10);--line2:rgba(12,10,9,.18);
+  --ink:#030213;--ink2:#3f3f46;--mute:#717182;--faint:#a1a1aa;
+  --c1:#030213;--c2:oklch(0.62 0.17 52);--c3:oklch(0.58 0.12 192);
+  --c4:oklch(0.58 0.21 25);--c5:oklch(0.52 0.13 275);
+  --accent:#030213;--on-accent:#fff;
+  --radius-sm:7px;--radius:10px;--radius-lg:14px;
+  --shadow:0 1px 2px rgba(12,10,9,.04),0 10px 30px -18px rgba(12,10,9,.22);
+  --shadow-lg:0 2px 6px rgba(12,10,9,.06),0 18px 44px -22px rgba(12,10,9,.30);
+  --ease:cubic-bezier(.22,.8,.24,1);
+}
+[data-theme=dark]{
+  --bg:oklch(0.145 0 0);--surface:oklch(0.145 0 0);--surface2:oklch(0.205 0 0);
+  --surface3:oklch(0.269 0 0);
+  --line:oklch(0.269 0 0);--line2:oklch(0.36 0 0);
+  --ink:oklch(0.985 0 0);--ink2:oklch(0.86 0 0);--mute:oklch(0.708 0 0);--faint:oklch(0.55 0 0);
+  --c1:oklch(0.97 0 0);--c2:oklch(0.75 0.16 62);--c3:oklch(0.72 0.12 192);
+  --c4:oklch(0.68 0.19 25);--c5:oklch(0.70 0.14 275);
+  --accent:oklch(0.985 0 0);--on-accent:oklch(0.145 0 0);
+  --shadow:0 1px 2px rgba(0,0,0,.45),0 12px 34px -20px rgba(0,0,0,.85);
+  --shadow-lg:0 2px 8px rgba(0,0,0,.5),0 22px 50px -24px rgba(0,0,0,.9);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:"Noto Sans SC","Inter",-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+  background:var(--bg);color:var(--ink);font-size:13.5px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;transition:background .35s var(--ease),color .35s var(--ease);
+}
+.num{font-variant-numeric:tabular-nums}
+button,input,select{font-family:inherit;color:inherit}
+
+/* ---------- 布局 ---------- */
+.app{display:grid;grid-template-columns:236px 1fr;min-height:100vh}
+aside{
+  position:sticky;top:0;height:100vh;padding:22px 14px;display:flex;flex-direction:column;gap:5px;
+  background:var(--surface);border-right:1px solid var(--line);
+  transition:background .35s var(--ease),border-color .35s var(--ease);
+}
+.brand{display:flex;align-items:center;gap:11px;padding:2px 8px 20px}
+.logo{width:32px;height:32px;border-radius:var(--radius);background:var(--ink);color:var(--bg);display:grid;place-items:center;font-weight:700;font-size:12.5px;letter-spacing:-.5px;transition:background .35s var(--ease),color .35s var(--ease)}
+.brand b{font-size:14.5px;letter-spacing:-.2px;display:block;line-height:1.25}
+.brand small{color:var(--mute);font-size:11px;letter-spacing:.02em}
+.nav-item{
+  position:relative;display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:none;background:none;
+  border-radius:var(--radius);color:var(--mute);cursor:pointer;font-size:13.5px;letter-spacing:.01em;text-align:left;
+  transition:color .25s var(--ease),background .25s var(--ease);
+}
+.nav-item svg{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.nav-item:hover{color:var(--ink);background:var(--surface2)}
+.nav-item.active{color:var(--ink);background:var(--surface3);font-weight:600}
+.nav-item.active::before{content:"";position:absolute;left:-14px;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0;background:var(--ink)}
+.nav-item kbd{margin-left:auto;font-size:10.5px;color:var(--faint);border:1px solid var(--line);border-radius:5px;padding:0 5px}
+.side-foot{margin-top:auto;display:flex;flex-direction:column;gap:10px}
+.mini-card{border:1px solid var(--line);border-radius:var(--radius);padding:11px 12px;background:var(--surface2);font-size:12px;transition:background .35s var(--ease),border-color .35s}
+.mini-card .t{color:var(--mute);font-size:11px;margin-bottom:3px}
+.mini-card .v{font-weight:600;word-break:break-all}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--faint);margin-right:6px;vertical-align:middle}
+.dot.live{background:var(--ink);box-shadow:0 0 0 0 var(--ink);animation:ping 1.8s infinite}
+@keyframes ping{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ink) 40%,transparent)}100%{box-shadow:0 0 0 8px transparent}}
+.icon-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:8px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);cursor:pointer;font-size:12.5px;color:var(--ink2);transition:.25s var(--ease)}
+.icon-btn:hover{border-color:var(--line2);background:var(--surface2);color:var(--ink)}
+.icon-btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.7}
+
+main{padding:28px 34px 60px;max-width:1560px;width:100%}
+.topbar{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+.topbar h2{font-size:22px;letter-spacing:-.5px;font-weight:700}
+.topbar p{color:var(--mute);margin-top:3px}
+.pill{display:inline-flex;align-items:center;gap:7px;padding:5px 13px;border-radius:999px;font-size:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink2);transition:.35s var(--ease)}
+.pill.training{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.pill.training .dot{background:var(--bg)}
+.pill.error{border-color:var(--c4);color:var(--c4)}
+.page{display:none}
+.page.active{display:block;animation:pageIn .5s var(--ease) both}
+@keyframes pageIn{from{opacity:0;transform:translateY(12px);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ---------- 卡片与表单 ---------- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:18px 20px;box-shadow:var(--shadow);transition:background .35s var(--ease),border-color .35s,transform .35s var(--ease),box-shadow .35s var(--ease)}
+.card.hover:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:var(--line2)}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.card-h h3{font-size:13.5px;font-weight:650;letter-spacing:-.1px}
+.card-h .sub{color:var(--mute);font-size:11.5px}
+.grid{display:grid;gap:16px}
+.g-train{grid-template-columns:322px 1fr;align-items:start}
+.g-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g-arch{grid-template-columns:1fr 340px;align-items:start}
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.span2{grid-column:span 2}
+.stack{display:flex;flex-direction:column;gap:16px}
+@media(max-width:1180px){.g-train,.g-2,.g-arch{grid-template-columns:1fr}.span2{grid-column:auto}}
+@media(max-width:900px){.app{grid-template-columns:1fr}aside{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center}.side-foot{display:none}.nav-item.active::before{display:none}main{padding:18px}}
+
+label.f{display:block;font-size:11.5px;color:var(--mute);margin-bottom:5px}
+.field{margin-bottom:12px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+input[type=number],input[type=text],select{
+  width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface2);font-size:13px;
+  transition:border-color .2s,box-shadow .2s,background .2s;appearance:none;-webkit-appearance:none;
+}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23999' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+input:focus,select:focus{outline:none;border-color:var(--ink);box-shadow:0 0 0 3px color-mix(in srgb,var(--ink) 10%,transparent);background:var(--surface)}
+input[type=range]{width:100%;accent-color:var(--ink);height:4px}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--surface2);border:1px solid var(--line);border-radius:var(--radius);padding:3px;gap:2px}
+.seg button{border:none;background:none;padding:6px 4px;border-radius:var(--radius-sm);font-size:12px;color:var(--mute);cursor:pointer;transition:.2s}
+.seg button:hover{color:var(--ink)}
+.seg button.on{background:var(--ink);color:var(--bg);font-weight:600}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--ink2);border-radius:999px;padding:4px 12px;font-size:11.5px;cursor:pointer;transition:.25s var(--ease)}
+.chip:hover{border-color:var(--ink);color:var(--ink);background:var(--surface2)}
+.switch{display:flex;align-items:center;justify-content:space-between;padding:7px 0;font-size:12.5px;cursor:pointer;color:var(--ink2)}
+.switch input{display:none}
+.switch i{position:relative;width:34px;height:20px;border-radius:999px;background:var(--line2);transition:.25s var(--ease);flex:none}
+.switch i::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--surface);transition:.25s var(--ease);box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.switch input:checked+i{background:var(--ink)}
+.switch input:checked+i::after{transform:translateX(14px);background:var(--bg)}
+hr.sep{border:none;border-top:1px solid var(--line);margin:14px 0}
+
+.btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 15px;border-radius:var(--radius-sm);font-size:13px;font-weight:550;cursor:pointer;border:1px solid var(--line2);background:var(--surface);color:var(--ink);transition:transform .15s var(--ease),background .25s,border-color .25s,opacity .25s}
+.btn:hover{border-color:var(--ink);background:var(--surface2)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.primary:hover{opacity:.88;background:var(--ink)}
+.btn.block{width:100%}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.btn .sp{display:none;width:13px;height:13px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite}
+.btn.loading .sp{display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btns.fill .btn{flex:1}
+.badge{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line2);border-radius:999px;padding:2px 9px;font-size:11px;color:var(--ink2);background:var(--surface2)}
+.badge.good{border-color:var(--c3);color:var(--c3)}
+.badge.warn{border-color:var(--c2);color:var(--c2)}
+.badge.bad{border-color:var(--c4);color:var(--c4)}
+.rowlink{display:inline-flex;align-items:center;gap:5px;color:var(--mute);background:none;border:none;cursor:pointer;font-size:11.5px;padding:0;transition:color .2s}
+.rowlink:hover{color:var(--c4)}
+
+/* ---------- KPI ---------- */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+@media(max-width:1100px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.kpi{padding:14px 16px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow);transition:transform .35s var(--ease),box-shadow .35s var(--ease),border-color .35s}
+.kpi:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.kpi .l{font-size:11.5px;color:var(--mute)}
+.kpi .v{font-size:24px;font-weight:700;letter-spacing:-.8px;margin-top:2px}
+.kpi .s{font-size:11px;color:var(--faint);margin-top:1px}
+.progress{height:4px;border-radius:99px;background:var(--line);overflow:hidden;margin-bottom:16px}
+.progress>i{display:block;height:100%;width:0;background:var(--ink);border-radius:99px;transition:width .5s var(--ease)}
+.progress.run>i{background:linear-gradient(90deg,var(--ink) 0%,var(--c2) 50%,var(--ink) 100%);background-size:200% 100%;animation:shine 1.4s linear infinite}
+@keyframes shine{to{background-position:-200% 0}}
+
+canvas{display:block;width:100%}
+.cv{height:230px}.cv.tall{height:290px}.cv.sm{height:170px}
+.empty{position:relative}
+.empty-msg{position:absolute;inset:0;display:grid;place-items:center;color:var(--faint);font-size:12.5px;pointer-events:none;transition:opacity .3s}
+.empty-msg.hide{opacity:0}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--mute)}
+.legend span::before{content:"";display:inline-block;width:14px;height:0;border-top:2px solid var(--c);margin-right:6px;vertical-align:middle;border-top-style:var(--st,solid)}
+
+.term{background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;height:230px;overflow:auto;font:12px/1.65 "JetBrains Mono",Consolas,monospace;color:var(--ink2)}
+.term div{animation:rise .3s var(--ease) both}
+.term .t{color:var(--faint);margin-right:8px}
+
+table.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl th{text-align:left;color:var(--mute);font-weight:550;font-size:11.5px;letter-spacing:.02em;padding:10px 12px;border-bottom:1px solid var(--line2)}
+.tbl td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl tbody tr{transition:background .18s}
+.tbl tbody tr:hover{background:var(--surface2)}
+.tbl tbody tr:last-child td{border-bottom:none}
+.tag{display:inline-flex;align-items:center;border:1px solid var(--ink);border-radius:999px;padding:1px 9px;font-size:11px;font-weight:600}
+.ok{font-weight:650}.bad{font-weight:650;text-decoration:underline wavy}
+.empty-row td{color:var(--faint);text-align:center;padding:22px 12px}
+
+.pad-wrap{display:flex;gap:20px;flex-wrap:wrap}
+#mnist-pad{width:224px;height:224px;background:#000;border-radius:12px;cursor:crosshair;touch-action:none;border:1px solid var(--line2)}
+.imgbox{border-radius:10px;border:1px solid var(--line2);background:#000;image-rendering:pixelated}
+.bar{display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:12px}
+.bar .tr{flex:1;height:8px;background:var(--line);border-radius:99px;overflow:hidden}
+.bar .tr i{display:block;height:100%;background:var(--ink);border-radius:99px;transition:width .5s var(--ease)}
+.bar.top .tr i{background:var(--ink)}.bar:not(.top) .tr i{background:var(--c3)}
+.result-big{font-size:34px;font-weight:700;letter-spacing:-1.5px;line-height:1}
+
+.gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}
+@media(max-width:900px){.gallery{grid-template-columns:1fr}}
+.gallery img,.lab-img{width:100%;border-radius:10px;background:#fff;cursor:zoom-in;transition:transform .3s var(--ease)}
+.gallery .card:hover img{transform:scale(1.01)}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(6px);display:grid;place-items:center;opacity:0;pointer-events:none;transition:opacity .3s;z-index:50;cursor:zoom-out}
+.lightbox.on{opacity:1;pointer-events:auto}
+.lightbox img{max-width:92vw;max-height:90vh;border-radius:12px;background:#fff;transform:scale(.94);transition:transform .35s var(--ease)}
+.lightbox.on img{transform:none}
+.toasts{position:fixed;right:22px;bottom:22px;display:flex;flex-direction:column;gap:8px;z-index:60}
+.toast{background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:12.5px;box-shadow:0 10px 30px -10px rgba(0,0,0,.5);animation:toastin .35s var(--ease) both;max-width:360px}
+.toast.out{animation:toastout .3s var(--ease) both}
+@keyframes toastin{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes toastout{to{opacity:0;transform:translateY(8px) scale(.96)}}
+.skeleton{background:linear-gradient(90deg,var(--line) 0%,var(--surface2) 50%,var(--line) 100%);background-size:200% 100%;animation:shine 1.4s linear infinite;border-radius:10px}
+.hint{font-size:11.5px;color:var(--mute)}
+.kbd-hint{margin-top:10px;font-size:11px;color:var(--faint);display:flex;gap:10px;flex-wrap:wrap}
+kbd{font:inherit;border:1px solid var(--line);border-radius:4px;padding:0 5px;background:var(--surface2)}
+
+/* ---------- 3D 视图 ---------- */
+.m3d-wrap{position:relative;border-radius:var(--radius);overflow:hidden;border:1px solid var(--line);background:var(--surface2)}
+.m3d-canvas{display:block;width:100%;height:540px;touch-action:none;cursor:grab}
+.m3d-canvas:active{cursor:grabbing}
+.m3d-overlay{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.m3d-label{
+  position:absolute;left:0;top:0;pointer-events:auto;white-space:nowrap;
+  background:color-mix(in srgb,var(--surface) 88%,transparent);
+  border:1px solid var(--line);border-radius:6px;padding:2px 7px;
+  font-size:10.5px;line-height:1.35;backdrop-filter:blur(8px);
+  transition:opacity .25s var(--ease),border-color .25s,background .25s;
+}
+.m3d-label b{display:block;font-weight:600;color:var(--ink)}
+.m3d-label span{color:var(--mute);font-size:9.5px}
+.m3d-label.sel{border-color:var(--c2);background:color-mix(in srgb,var(--c2) 16%,var(--surface));box-shadow:0 4px 18px -8px color-mix(in srgb,var(--c2) 60%,transparent)}
+.m3d-label.small{font-size:9.5px;padding:1px 5px}
+.m3d-label.tiny{font-size:9px;padding:1px 5px;border-radius:5px;background:color-mix(in srgb,var(--surface) 76%,transparent)}
+.m3d-label.tiny b{font-size:9px;font-weight:600}
+.m3d-label.tiny span{font-size:8px}
+.m3d-hint{position:absolute;left:12px;bottom:10px;font-size:10.5px;color:var(--faint);pointer-events:none}
+.arch-detail dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0;font-size:12px}
+.arch-detail dt{color:var(--mute)}
+.arch-detail dd{margin:0;font-weight:600;word-break:break-all}
+.arch-detail .d-desc{margin-top:8px;font-size:12px;color:var(--ink2);line-height:1.6}
+
+/* ---------- 车队 / 实时评估 ---------- */
+.fleet{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;margin-top:14px}
+.fleet .car{border:1px solid var(--line);border-radius:var(--radius);padding:9px 11px;background:var(--surface2);transition:border-color .25s,background .25s}
+.fleet .car .h{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--mute);margin-bottom:3px}
+.fleet .car .h i{width:9px;height:9px;border-radius:50%;flex:none}
+.fleet .car .v{font-size:17px;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.fleet .car .s{font-size:10.5px;color:var(--faint);margin-top:1px}
+.fleet .car.out{border-color:var(--c4);background:color-mix(in srgb,var(--c4) 8%,var(--surface2))}
+.fleet .car.out .v{color:var(--c4)}
+.drive-map{position:absolute;right:14px;top:14px;width:150px;height:180px;border-radius:10px;border:1px solid var(--line);background:color-mix(in srgb,var(--surface) 72%,transparent);backdrop-filter:blur(8px);pointer-events:none;z-index:2}
+.drive-hud{position:absolute;left:14px;top:12px;max-width:calc(100% - 196px);font:11px/1.5 "Inter",-apple-system,"Microsoft YaHei",sans-serif;color:var(--ink2);background:color-mix(in srgb,var(--surface) 78%,transparent);border:1px solid var(--line);border-radius:8px;padding:6px 10px;backdrop-filter:blur(8px);pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:2}
+.side-model-select{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:12px;color:var(--ink);cursor:pointer;transition:border-color .2s}
+.side-model-select:focus{outline:none;border-color:var(--line2)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside>
+  <div class="brand"><div class="logo">MF</div><div><b>MiniFlows Studio</b><small>纯 NumPy 深度学习框架</small></div></div>
+  <button class="nav-item active" data-page="train"><svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 4 8-9"/><path d="M14 7h6v6"/></svg>一键训练<kbd>1</kbd></button>
+  <button class="nav-item" data-page="infer"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/></svg>推理与仿真<kbd>2</kbd></button>
+  <button class="nav-item" data-page="lab"><svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 002 3h10a2 2 0 002-3l-5-9V3"/></svg>原理实验室<kbd>3</kbd></button>
+  <button class="nav-item" data-page="runs"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>运行历史<kbd>4</kbd></button>
+  <button class="nav-item" data-page="arch3d"><svg viewBox="0 0 24 24"><path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M12 12l9-5M12 12v10M12 12L3 7"/></svg>架构 3D<kbd>5</kbd></button>
+  <button class="nav-item" data-page="drive"><svg viewBox="0 0 24 24"><path d="M5 17h14M6 17v-4l2-5h8l2 5v4"/><circle cx="8" cy="17" r="2"/><circle cx="16" cy="17" r="2"/></svg>实时驾驶<kbd>6</kbd></button>
+  <button class="nav-item" data-page="bench"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>对比总览<kbd>7</kbd></button>
+  <div class="side-foot">
+    <div class="mini-card">
+      <div class="t">当前模型 · 快速切换</div>
+      <select id="side-model-select" class="side-model-select">
+        <option value="">— 自定义 / 未匹配 —</option>
+        <option value="donkeycar_resnet">DonkeyCar · ResNet-GN（主）</option>
+        <option value="donkeycar_cnn">DonkeyCar · CNN（快）</option>
+        <option value="donkeycar_vit">DonkeyCar · ViT-Tiny</option>
+        <option value="mnist_lenet">MNIST · LeNet</option>
+        <option value="mnist_vgg11">MNIST · VGG11</option>
+      </select>
+      <div class="v" id="side-model" style="margin-top:6px">—</div>
+      <div class="t" style="margin-top:4px" id="side-meta"></div>
+    </div>
+    <div class="mini-card"><span class="dot" id="sse-dot"></span><span id="sse-txt">连接中</span></div>
+    <button class="icon-btn" id="theme-btn"><svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg><span>切换深色</span></button>
+  </div>
+</aside>
+
+<main>
+<div class="topbar">
+  <div><h2 id="page-title">一键训练</h2><p id="page-desc">选择任务与架构，实时观察训练过程。</p></div>
+  <span class="pill" id="status-pill"><span class="dot"></span><span id="status-txt">就绪</span></span>
+</div>
+
+<!-- ============ 训练 ============ -->
+<section class="page active" id="page-train">
+<div class="grid g-train">
+  <div class="stack" style="position:sticky;top:20px">
+    <div class="card">
+      <div class="card-h"><h3>训练配置</h3><span class="sub">Ctrl + Enter 开始</span></div>
+      <div class="field"><label class="f">任务</label>
+        <select id="cfg-task">
+          <option value="donkeycar">DonkeyCar 自动驾驶（回归）</option>
+          <option value="mnist">MNIST 手写数字（10 分类）</option>
+          <option value="iris">鸢尾花三分类</option>
+          <option value="logistic">逻辑回归二分类</option>
+          <option value="linear">线性回归拟合</option>
+        </select></div>
+      <div class="field"><label class="f">网络架构</label><select id="cfg-arch"></select></div>
+      <div id="vit-box" style="display:none;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface2);margin-bottom:12px">
+        <div class="hint" style="margin-bottom:6px;font-weight:600">ViT 结构参数调节（自定义参数量）</div>
+        <div class="row2">
+          <div class="field" style="margin-bottom:6px"><label class="f">嵌入维 dim</label><select id="vit-dim"><option value="32">32 (极简)</option><option value="48" selected>48 (44k)</option><option value="64">64 (80k)</option><option value="96">96 (180k)</option><option value="128">128 (320k)</option></select></div>
+          <div class="field" style="margin-bottom:6px"><label class="f">层数 depth</label><select id="vit-depth"><option value="1">1 层</option><option value="2" selected>2 层</option><option value="3">3 层</option><option value="4">4 层</option></select></div>
+        </div>
+        <div class="row2">
+          <div class="field" style="margin-bottom:0"><label class="f">注意力头 heads</label><select id="vit-heads"><option value="2">2 头</option><option value="4" selected>4 头</option><option value="6">6 头</option><option value="8">8 头</option></select></div>
+          <div class="field" style="margin-bottom:0"><label class="f">Patch 尺寸</label><select id="vit-patch"><option value="8" selected>8×8</option><option value="16">16×16</option></select></div>
+        </div>
+      </div>
+      <div class="chips" id="chips">
+        <button class="chip" data-p="fast">快速体验</button><button class="chip" data-p="std">标准</button><button class="chip" data-p="fine">精细</button>
+      </div>
+      <div class="row2">
+        <div class="field"><label class="f">轮数</label><input id="cfg-epochs" type="number" value="6" min="1" max="100"></div>
+        <div class="field"><label class="f">样本数</label><input id="cfg-samples" type="number" value="400" min="40" max="8000"></div>
+      </div>
+      <div class="field"><label class="f">优化器</label>
+        <div class="seg" id="seg-opt"><button class="on" data-v="adam">Adam</button><button data-v="mbgd">MBGD</button></div></div>
+      <div class="field"><label class="f">学习率 <b class="num" id="lr-val" style="color:var(--ink)">1.0e-3</b></label>
+        <input id="cfg-lr-s" type="range" min="-4" max="-1" step="0.05" value="-3"></div>
+      <div class="row2">
+        <div class="field"><label class="f">Batch Size</label><input id="cfg-bs" type="number" value="32" min="4" max="256"></div>
+        <div class="field"><label class="f">梯度裁剪 max_norm（0 关）</label><input id="cfg-clip" type="number" step="0.1" value="0" min="0"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label class="f">L2 正则 λ（0 关）</label><input id="cfg-l2" type="number" step="0.0001" value="0" min="0"></div>
+        <div class="field"><label class="f">动量 momentum（MBGD）</label><input id="cfg-mom" type="number" step="0.05" value="0.9" min="0" max="0.99"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label class="f">特征缩放</label>
+          <select id="cfg-scale"><option value="standard">z-score</option><option value="minmax">Min-Max</option><option value="none">不缩放</option></select></div>
+        <div class="field"><label class="f">随机种子</label><input id="cfg-seed" type="number" value="42"></div>
+      </div>
+      <label class="switch">3× 数据增强<input type="checkbox" id="cfg-aug"><i></i></label>
+      <label class="switch">早停 EarlyStopping<input type="checkbox" id="cfg-es"><i></i></label>
+      <label class="switch">学习率衰减<input type="checkbox" id="cfg-lrs"><i></i></label>
+      <div class="btns fill" style="margin-top:12px">
+        <button class="btn primary" id="btn-start"><span class="sp"></span>开始训练</button>
+        <button class="btn" id="btn-stop">停止</button>
+      </div>
+      <div class="kbd-hint"><span><kbd>Ctrl</kbd>+<kbd>Enter</kbd> 开始</span><span><kbd>Esc</kbd> 停止</span><span><kbd>1</kbd>–<kbd>4</kbd> 切页</span></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>模型管理</h3><span class="sub" id="persist-msg"></span></div>
+      <div class="btns fill"><button class="btn" id="btn-save">保存 .npz</button><button class="btn" id="btn-reload">重载校验</button></div>
+      <div class="btns fill" style="margin-top:8px"><button class="btn" data-preset="donkeycar_resnet">预载 主模型</button><button class="btn" data-preset="mnist_lenet">预载 LeNet</button></div>
+      <div class="btns fill" style="margin-top:8px"><button class="btn" id="btn-report-md">导出 Markdown</button><button class="btn" id="btn-report-zip">导出报告 ZIP</button></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="kpis">
+      <div class="kpi"><div class="l">已完成轮次</div><div class="v num" id="k-epoch">0</div><div class="s" id="k-epoch-s">/ —</div></div>
+      <div class="kpi"><div class="l">训练损失</div><div class="v num" id="k-tloss">—</div><div class="s" id="k-vloss">验证 —</div></div>
+      <div class="kpi"><div class="l" id="k-metric-l">验证指标</div><div class="v num" id="k-metric">—</div><div class="s" id="k-best">—</div></div>
+      <div class="kpi"><div class="l">参数量 · 单帧延迟</div><div class="v num" id="k-params">—</div><div class="s" id="k-lat">—</div></div>
+    </div>
+    <div class="progress" id="prog"><i id="prog-bar"></i></div>
+    <div class="grid g-2">
+      <div class="card span2 hover">
+        <div class="card-h"><h3>训练 / 验证曲线</h3>
+          <div style="display:flex;gap:14px;align-items:center"><div class="legend" id="lg-loss"></div><button class="chip" id="btn-csv">导出 CSV</button></div></div>
+        <div class="empty"><canvas class="cv tall" id="cv-loss"></canvas><div class="empty-msg" id="em-loss">点击「开始训练」后在此实时绘制</div></div>
+      </div>
+      <div class="card hover"><div class="card-h"><h3>Batch 损失</h3><span class="sub">最近 400 步</span></div>
+        <div class="empty"><canvas class="cv" id="cv-batch"></canvas><div class="empty-msg" id="em-batch">等待数据</div></div></div>
+      <div class="card hover"><div class="card-h"><h3>任务实时预览</h3><span class="sub" id="pv-sub"></span></div>
+        <div class="empty"><canvas class="cv" id="cv-prev"></canvas><div class="empty-msg" id="em-prev">训练后显示拟合 / 边界 / 预测</div></div></div>
+      <div class="card hover"><div class="card-h"><h3>权重分布</h3><select id="sel-layer" style="width:auto;padding:4px 26px 4px 8px;font-size:11.5px"></select></div>
+        <div class="empty"><canvas class="cv" id="cv-hist"></canvas><div class="empty-msg" id="em-hist">等待权重数据</div></div></div>
+      <div class="card hover"><div class="card-h"><h3>各层梯度 L2 范数</h3><span class="sub">监测消失 / 爆炸</span></div>
+        <div class="empty"><canvas class="cv" id="cv-grad"></canvas><div class="empty-msg" id="em-grad">等待梯度数据</div></div></div>
+      <div class="card span2 hover"><div class="card-h"><h3>训练日志</h3><button class="chip" id="btn-clearlog">清空显示</button></div><div class="term" id="term"></div></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ============ 推理与仿真 ============ -->
+<section class="page" id="page-infer">
+<div class="grid g-2">
+  <div class="card hover">
+    <div class="card-h"><h3>MNIST 手写识别</h3><span class="sub">POST /predict · 遮挡热图</span></div>
+    <div class="pad-wrap">
+      <div>
+        <canvas id="mnist-pad"></canvas>
+        <div class="btns" style="margin-top:10px"><button class="btn primary" id="btn-mnist"><span class="sp"></span>识别</button><button class="btn" id="btn-clear">清空</button><button class="btn" data-preset="mnist_lenet">载入 LeNet</button></div>
+        <p class="hint" style="margin-top:8px">在黑色画板上书写；需先载入或训练 MNIST 模型。</p>
+      </div>
+      <div style="flex:1;min-width:230px">
+        <div class="hint">预测结果</div>
+        <div class="result-big num" id="mnist-res">—</div>
+        <div class="hint" id="mnist-lat" style="margin:4px 0 12px"></div>
+        <div id="mnist-probs"></div>
+        <div class="hint" style="margin:12px 0 6px">8×8 遮挡敏感性（亮 = 关键区域）</div>
+        <canvas id="cv-mnist-heat" class="imgbox" style="width:150px;height:150px"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="card hover">
+    <div class="card-h"><h3>DonkeyCar 赛道推理</h3><span class="sub">渲染 · 扰动 · 热图</span></div>
+    <div class="row2">
+      <div class="field"><label class="f">道路偏移 <b class="num" id="lb-off" style="color:var(--ink)">6</b> px</label><input id="dc-off" type="range" min="-16" max="16" value="6"></div>
+      <div class="field"><label class="f">弯道斜率 <b class="num" id="lb-tilt" style="color:var(--ink)">10</b> px</label><input id="dc-tilt" type="range" min="-18" max="18" value="10"></div>
+    </div>
+    <div class="field"><label class="f">视觉扰动</label>
+      <select id="dc-dist">
+        <option value="clean">无（干净赛道）</option>
+        <option value="noise_0.02">高斯噪声 σ=0.02</option>
+        <option value="noise_0.05">高斯噪声 σ=0.05</option>
+        <option value="noise_0.10">高斯噪声 σ=0.10</option>
+        <option value="bright_-0.2">亮度 −0.2</option>
+        <option value="bright_+0.2">亮度 +0.2</option>
+        <option value="contrast_0.7">对比度 ×0.7</option>
+        <option value="contrast_1.3">对比度 ×1.3</option>
+        <option value="blur_3x3">3×3 模糊</option>
+        <option value="occ_center">中心遮挡</option>
+        <option value="occ_bottom">底部遮挡</option>
+      </select></div>
+    <div class="btns"><button class="btn primary" id="btn-dc"><span class="sp"></span>渲染并推理</button><button class="btn" data-preset="donkeycar_resnet">主模型</button><button class="btn" data-preset="donkeycar_cnn">CNN</button><button class="btn" data-preset="donkeycar_vit">ViT</button></div>
+    <div style="display:flex;gap:16px;margin-top:14px;flex-wrap:wrap;align-items:center">
+      <div><div class="hint" style="margin-bottom:4px">输入 64×64</div><canvas id="cv-dc-img" class="imgbox" style="width:150px;height:150px"></canvas></div>
+      <div><div class="hint" style="margin-bottom:4px">敏感性热图</div><canvas id="cv-dc-heat" class="imgbox" style="width:150px;height:150px"></canvas></div>
+      <div style="flex:1;min-width:190px"><div class="hint">转向角预测</div><div class="result-big num" id="dc-val">—</div><div class="hint" id="dc-gt" style="margin-bottom:6px"></div><canvas id="cv-gauge" style="height:84px"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card span2 hover">
+    <div class="card-h"><h3>闭环驾驶仿真</h3><span class="sub" id="sim-res">模型闭环 vs 不转向开环</span></div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+      <div style="width:130px"><label class="f">弯道振幅 A</label><input id="sim-amp" type="number" value="12" min="4" max="22"></div>
+      <div style="width:130px"><label class="f">波长 λ</label><input id="sim-lam" type="number" value="300" min="150" max="420"></div>
+      <div style="width:130px"><label class="f">赛道噪声 σ</label><input id="sim-noise" type="number" step="0.01" value="0" min="0" max="0.15"></div>
+      <button class="btn primary" id="btn-sim"><span class="sp"></span>运行仿真</button>
+      <div class="legend" id="lg-sim"></div>
+    </div>
+    <div class="empty"><canvas class="cv tall" id="cv-sim"></canvas><div class="empty-msg" id="em-sim">点击「运行仿真」</div></div>
+  </div>
+
+  <div class="card span2 hover">
+    <div class="card-h"><h3>通用 /predict 接口测试</h3><span class="sub" id="vec-sub">鸢尾花 / 线性 / 逻辑回归特征向量</span></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <input id="vec-input" type="text" value="[5.1, 3.5, 1.4, 0.2]" style="flex:1;min-width:240px">
+      <button class="btn primary" id="btn-vec"><span class="sp"></span>调用</button>
+      <button class="btn" id="btn-vec-train"><span class="sp"></span>训练鸢尾花模型</button>
+      <span id="vec-res" class="num" style="font-weight:600"></span>
+    </div>
+  </div>
+
+  <div class="card span2 hover">
+    <div class="card-h"><h3>11 项视觉扰动鲁棒性扫描</h3><span class="sub" id="rob-sub">固定测试集 · 70/15/15 划分 · 与仓库评测同协议</span></div>
+    <div class="btns" style="margin-bottom:12px;align-items:center">
+      <button class="btn primary" id="btn-rob"><span class="sp"></span>运行扫描</button>
+      <span class="hint">对当前激活的 DonkeyCar 模型逐项施加 11 种视觉扰动，统计开环 MAE</span>
+    </div>
+    <div class="empty"><canvas class="cv tall" id="cv-rob"></canvas><div class="empty-msg" id="em-rob">点击「运行扫描」开始</div></div>
+    <div id="rob-table" style="margin-top:14px"></div>
+  </div>
+</div>
+</section>
+
+<!-- ============ 原理实验室 ============ -->
+<section class="page" id="page-lab">
+<div class="grid g-2">
+  <div class="card hover">
+    <div class="card-h"><h3>① 计算图自动绘制</h3><span class="sub" id="graph-meta"></span></div>
+    <div class="seg" id="seg-graph" style="margin-bottom:12px"><button class="on" data-v="mlp">MLP + CE</button><button data-v="dag">共享分支 DAG</button><button data-v="resnet_block">ResNet Block</button></div>
+    <div class="skeleton" id="graph-sk" style="height:260px;display:none"></div>
+    <img id="graph-img" class="lab-img" style="display:none" alt="计算图">
+    <p class="hint" id="graph-hint">点击上方选项即时前向建图并渲染。</p>
+  </div>
+  <div class="card hover">
+    <div class="card-h"><h3>③ 异常训练对照</h3><span class="sub" id="anom-title"></span></div>
+    <div class="seg" id="seg-anom" style="margin-bottom:12px"><button class="on" data-v="explosion">梯度爆炸</button><button data-v="vanishing">梯度消失</button><button data-v="lr_oscillation">学习率震荡</button></div>
+    <div class="empty"><canvas class="cv tall" id="cv-anom"></canvas><div class="empty-msg" id="em-anom">选择上方选项运行</div></div>
+    <div class="legend" id="lg-anom" style="margin-top:8px"></div>
+  </div>
+  <div class="card hover">
+    <div class="card-h"><h3>② 数值梯度检验</h3><span class="sub" id="gc-sum">eps=1e-5 · tol=1e-5</span></div>
+    <div class="btns" style="margin-bottom:10px"><button class="btn primary" id="btn-gc"><span class="sp"></span>运行 17 项检验</button></div>
+    <div style="max-height:300px;overflow:auto"><table class="tbl" id="tbl-gc"><thead><tr><th>算子 / 模型</th><th>形状</th><th>最大相对误差</th><th>结论</th></tr></thead><tbody></tbody></table></div>
+  </div>
+  <div class="card hover">
+    <div class="card-h"><h3>④ 特征标准化（无泄露）</h3><span class="sub" id="prep-sum"></span></div>
+    <div class="btns" style="margin-bottom:10px"><button class="btn primary" id="btn-prep"><span class="sp"></span>运行统计对照</button></div>
+    <table class="tbl" id="tbl-prep"><thead><tr><th>特征</th><th>原始 μ ± σ</th><th>训练集缩放后</th><th>测试集 μ</th></tr></thead><tbody></tbody></table>
+  </div>
+</div>
+</section>
+
+<!-- ============ 架构 3D ============ -->
+<section class="page" id="page-arch3d">
+  <div class="grid g-arch">
+    <div class="card">
+      <div class="card-h">
+        <h3>模型 3D 工作台</h3>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <div class="seg" id="seg-3d" style="width:auto">
+            <button class="on" data-v="arch">架构拆解</button>
+            <button data-v="weights">3D 参数</button>
+            <button data-v="backward">反向传播</button>
+          </div>
+          <button class="btn" id="btn-3d-reload">刷新数据</button>
+        </div>
+      </div>
+      <div class="row2" style="margin-bottom:14px">
+        <div class="field"><label class="f">层拆解程度 <b class="num" id="lb-explode" style="color:var(--ink)">0%</b></label>
+          <input id="sld-explode" type="range" min="0" max="100" value="0"></div>
+        <div class="field"><label class="f">视角与动画</label>
+          <div class="btns">
+            <button class="btn" id="btn-3d-frame">重置视角</button>
+            <button class="btn" id="btn-3d-spin">自动旋转</button>
+            <button class="btn" id="btn-3d-wave" style="display:none">播放回传</button>
+          </div></div>
+      </div>
+      <div class="m3d-wrap">
+        <canvas id="cv-3d" class="m3d-canvas"></canvas>
+        <div class="m3d-overlay" id="m3d-overlay"></div>
+        <div class="m3d-hint" id="m3d-hint">左键拖拽旋转 · 滚轮缩放 · 右键平移 · 点击色块查看层详情</div>
+      </div>
+      <div class="legend" id="lg-3d" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>层详情</h3><span class="sub" id="arch-meta"></span></div>
+      <div id="arch-detail" class="hint">点击 3D 场景中的层查看详情</div>
+      <hr class="sep">
+      <div class="card-h"><h3>逐层清单</h3><span class="sub" id="arch-sub"></span></div>
+      <div style="max-height:440px;overflow:auto">
+        <table class="tbl" id="tbl-arch"><thead><tr><th>#</th><th>层</th><th>类型</th><th>输出形状</th><th>参数</th></tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 实时驾驶 ============ -->
+<section class="page" id="page-drive">
+  <div class="card">
+    <div class="card-h"><h3>实时驾驶 · 多 Agent 同时运行</h3>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <select id="sel-drive-agents" style="width:auto;padding:4px 26px 4px 8px;font-size:11.5px">
+          <option value="1">1 台（单车）</option>
+          <option value="2">2 台</option><option value="4">4 台</option>
+          <option value="6">6 台</option><option value="8" selected>8 台</option>
+          <option value="12">12 台</option><option value="16">16 台</option>
+        </select>
+        <button class="btn primary" id="btn-drive-start"><span class="sp"></span>启动车队</button>
+        <button class="btn" id="btn-drive-stop">停止</button>
+      </div>
+    </div>
+    <div class="row3" style="margin-bottom:12px">
+      <div class="field"><label class="f">弯道振幅 A</label><input id="drive-amp" type="number" value="12" min="4" max="22"></div>
+      <div class="field"><label class="f">波长 λ</label><input id="drive-lam" type="number" value="300" min="150" max="420"></div>
+      <div class="field"><label class="f">赛道噪声 σ</label><input id="drive-noise" type="number" step="0.01" value="0" min="0" max="0.15"></div>
+    </div>
+    <div class="row3" style="margin-bottom:12px">
+      <div class="field"><label class="f">赛道形态</label>
+        <label class="hint" style="display:flex;align-items:center;gap:8px;padding-top:7px">
+          <input id="drive-random" type="checkbox"> 随机弯道（每次启动按种子生成）
+        </label>
+      </div>
+      <div class="field"><label class="f">随机种子</label><input id="drive-seed" type="number" value="2026" min="0" max="999999"></div>
+      <div class="field"><label class="f">第一人称跟随车辆</label><select id="sel-drive-follow" style="width:100%"></select></div>
+    </div>
+    <div class="row3" style="margin-bottom:12px">
+      <div class="field"><label class="f">初始模型</label>
+        <select id="sel-drive-model" style="width:100%">
+          <option value="donkeycar_cnn" selected>CNN（LeNet，快）</option>
+          <option value="donkeycar_resnet">ResNet-GN（主模型，稳）</option>
+          <option value="donkeycar_vit">ViT-Tiny</option>
+          <option value="heuristic">几何控制器（最快，无权重）</option>
+        </select>
+      </div>
+      <div class="field"><label class="f">控制频率</label>
+        <select id="sel-drive-freq" style="width:100%">
+          <option value="1" selected>每步推理（最准）</option>
+          <option value="2">每 2 步推理（均衡）</option>
+          <option value="3">每 3 步推理（最快）</option>
+        </select>
+      </div>
+      <div class="field"><label class="f">相机视角</label>
+        <select id="sel-drive-camera" style="width:100%">
+          <option value="chase" selected>追尾</option>
+          <option value="hood">车头</option>
+          <option value="top">俯视</option>
+          <option value="orbit">环绕</option>
+        </select>
+      </div>
+    </div>
+    <div class="hint" style="margin:-4px 0 12px">CNN / 几何控制器帧率更高；ResNet、ViT 建议每 2 步推理。追尾视角最适合观察闭环控制。</div>
+    <div class="empty" style="position:relative">
+      <canvas id="cv-drive" class="cv tall" style="height:440px"></canvas>
+      <canvas id="cv-drive-map" class="drive-map"></canvas>
+      <div id="drive-hud" class="drive-hud">等待车队启动</div>
+      <div class="empty-msg" id="em-drive">点击「启动车队」让多台虚拟车同时闭环驾驶</div>
+    </div>
+    <div id="drive-fleet" class="fleet"></div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div class="card-h"><h3>实时测试集评估</h3><span class="sub" id="live-sub">逐条推理固定测试集，指标实时刷新</span></div>
+    <div class="btns" style="margin-bottom:14px">
+      <button class="btn primary" id="btn-live-start"><span class="sp"></span>开始实时评估</button>
+      <button class="btn" id="btn-live-stop">停止</button>
+      <span class="hint">测试集固定（seed 2026，70/15/15 划分的测试段），结果可复现</span>
+    </div>
+    <div class="grid g-2">
+      <div class="stack">
+        <div class="kpis" style="margin:0;grid-template-columns:repeat(3,1fr)">
+          <div class="kpi"><div class="l">已评估</div><div class="v num" id="live-done">0</div><div class="s" id="live-total">/ —</div></div>
+          <div class="kpi"><div class="l">实时 MAE</div><div class="v num" id="live-mae">—</div><div class="s" id="live-rmse">RMSE —</div></div>
+          <div class="kpi"><div class="l">R² / 吞吐</div><div class="v num" id="live-r2">—</div><div class="s" id="live-tp">— /s</div></div>
+        </div>
+        <div class="empty" style="position:relative">
+          <canvas id="cv-live-scatter" class="cv"></canvas>
+          <div class="empty-msg" id="em-live">等待开始</div>
+        </div>
+      </div>
+      <div>
+        <div class="hint" style="margin-bottom:6px">当前正在评估的赛道画面（64×64）</div>
+        <canvas id="cv-live-img" class="imgbox" style="width:100%;height:auto;aspect-ratio:1;max-width:320px"></canvas>
+        <div class="legend" style="margin-top:12px" id="lg-live"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 对比总览 ============ -->
+<section class="page" id="page-bench">
+  <div class="card">
+    <div class="card-h"><h3>DonkeyCar 三架构同协议对比</h3><span class="sub">900 样本 · 70/15/15 · 5 种子 · 同协议评测</span></div>
+    <table class="tbl" id="tbl-arch"><thead><tr><th>架构</th><th>参数量</th><th>开环 MAE</th><th>R²</th><th>最差扰动</th><th>同分布闭环</th><th>单帧延迟</th><th>定位</th></tr></thead><tbody></tbody></table>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <div class="card-h"><h3>MiniFlows vs PyTorch</h3><span class="sub">同结构 LeNet-5 · CPU 单线程</span></div>
+    <table class="tbl" id="tbl-pt"><thead><tr><th>框架</th><th>dtype</th><th>参数量</th><th>FLOPs</th><th>1 轮训练</th><th>吞吐</th><th>单帧推理</th><th>RSS 增量</th></tr></thead><tbody></tbody></table>
+  </div>
+  <div class="grid g-2" style="margin-top:16px">
+    <div class="card hover"><div class="card-h"><h3>DonkeyCar 三架构综合对比</h3><div class="legend" id="lg-b-arch"></div></div><canvas class="cv tall" id="cv-b-arch"></canvas></div>
+    <div class="card hover"><div class="card-h"><h3>MiniFlows vs PyTorch 资源对比</h3><div class="legend" id="lg-b-pt"></div></div><canvas class="cv tall" id="cv-b-pt"></canvas></div>
+    <div class="card span2 hover"><div class="card-h"><h3>11 项视觉扰动鲁棒性对比（MAE，越低越好）</h3><div class="legend" id="lg-b-rob"></div></div><canvas class="cv tall" id="cv-b-rob"></canvas></div>
+    <div class="card span2 hover"><div class="card-h"><h3>闭环驾驶横向偏差对比（px，越低越好）</h3><div class="legend" id="lg-b-cl"></div></div><canvas class="cv" id="cv-b-cl"></canvas></div>
+  </div>
+</section>
+
+<!-- ============ 运行历史 ============ -->
+<section class="page" id="page-runs">
+  <div class="card hover">
+    <div class="card-h">
+      <h3>多轮运行曲线对比</h3>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <select id="sel-run-task" style="width:auto;padding:4px 26px 4px 8px;font-size:11.5px"></select>
+        <div class="seg" id="seg-runmetric" style="width:auto">
+          <button class="on" data-v="val_loss">验证损失</button>
+          <button data-v="val_metric">验证指标</button>
+        </div>
+        <button class="btn" id="btn-runs-clear">清空历史</button>
+        <button class="btn primary" id="btn-runs-zip">导出报告 ZIP</button>
+      </div>
+    </div>
+    <div class="legend" id="lg-runs" style="margin-bottom:10px"></div>
+    <div class="empty"><canvas class="cv tall" id="cv-runs"></canvas><div class="empty-msg" id="em-runs">完成一次训练后自动记录，可叠加对比多轮曲线</div></div>
+  </div>
+  <div class="card hover" style="margin-top:16px">
+    <div class="card-h"><h3>运行明细</h3><span class="sub" id="runs-sub"></span></div>
+    <table class="tbl" id="tbl-runs">
+      <thead><tr><th>#</th><th>任务 · 架构</th><th>轮数</th><th>样本</th><th>优化器</th><th>学习率</th><th>Batch</th><th>最优指标</th><th>参数量</th><th>耗时</th><th>状态</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+</main>
+</div>
+
+<div class="lightbox" id="lb"><img id="lb-img" alt=""></div>
+<div class="toasts" id="toasts"></div>
+
+<!-- 3D 引擎：three.js（本地 vendor，无需 CDN）+ 场景模块 -->
+<script src="/assets/vendor/three.min.js"></script>
+<script src="/assets/scene3d.js"></script>
+<script>
+/* ======================================================================
+   基础工具
+   ====================================================================== */
+const $ = id => document.getElementById(id);
+const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const ease = t => 1 - Math.pow(1 - t, 3);
+const fmt = (v, d = 4) => (v === null || v === undefined || !isFinite(v)) ? '—' : (Math.abs(v) >= 1000 || (Math.abs(v) < 0.001 && v !== 0)) ? v.toExponential(2) : (+v.toFixed(d)).toString();
+
+function toast(msg){
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; $('toasts').appendChild(t);
+  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, 3200);
+}
+async function api(url, body = null){
+  const opt = body === null ? {method:'GET'} : {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)};
+  const r = await fetch(url, opt);
+  let d = null;
+  try{ d = await r.json(); }catch(e){ d = null; }
+  if(!r.ok) throw new Error((d && d.error) || `请求失败（HTTP ${r.status}）`);
+  if(d === null) throw new Error('服务返回了非 JSON 响应');
+  return d;
+}
+async function busy(btn, fn){
+  if(btn) btn.classList.add('loading');
+  try{ return await fn(); }catch(e){ toast(e.message); }
+  finally{ if(btn) btn.classList.remove('loading'); }
+}
+/* 数值输入兜底：留空 / 非法时回退到默认值，避免把 NaN 送成 null 导致后端 400 */
+const numOf = (id, def) => { const v = parseFloat($(id).value); return Number.isFinite(v) ? v : def; };
+async function downloadFile(url, filename){
+  const r = await fetch(url);
+  if(!r.ok) throw new Error(`导出失败（HTTP ${r.status}）`);
+  const blob = await r.blob();
+  const url2 = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url2; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url2), 5000);
+}
+/* 高清画布：按 devicePixelRatio 放大后缩回，线条与文字保持锐利 */
+function fit(c){
+  const r = c.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 3);
+  const w = Math.max(10, Math.round(r.width)), h = Math.max(10, Math.round(r.height));
+  if(c.width !== Math.round(w * d) || c.height !== Math.round(h * d)){ c.width = Math.round(w * d); c.height = Math.round(h * d); }
+  const ctx = c.getContext('2d'); ctx.setTransform(d, 0, 0, d, 0, 0); ctx.clearRect(0, 0, w, h);
+  return {ctx, w, h};
+}
+const FONT = '11px "Inter",-apple-system,"Microsoft YaHei",sans-serif';
+function niceTicks(lo, hi, n = 4){
+  if(lo === hi){ lo -= 1; hi += 1; }
+  const span = hi - lo, step0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(step0)));
+  const norm = step0 / mag, step = (norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10) * mag;
+  const a = Math.floor(lo / step) * step, b = Math.ceil(hi / step) * step, out = [];
+  for(let v = a; v <= b + step * .5; v += step) out.push(+v.toPrecision(10));
+  return out;
+}
+const tickFmt = v => (Math.abs(v) >= 1000 || (Math.abs(v) < 0.01 && v !== 0)) ? v.toExponential(0) : (+v.toPrecision(3)).toString();
+function roundRect(ctx, x, y, w, h, r){ if(w <= 0 || h <= 0) return; r = Math.max(0, Math.min(r, w / 2, h / 2)); ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function legend(el, items){ el.innerHTML = items.map(s => `<span style="--c:${s.color};--st:${s.dash ? 'dashed' : 'solid'}">${s.name}</span>`).join(''); }
+
+/* ======================================================================
+   图表基类：数据变化时平滑补间（缓动 450ms），支持悬停与自适应尺寸
+   ====================================================================== */
+const CHARTS = [];
+class Chart{
+  constructor(id){
+    this.c = $(id); this.cur = []; this.from = []; this.tgt = []; this.key = ''; this.hx = null; this.hy = null; this.data = null; this.raf = 0;
+    new ResizeObserver(() => this.render()).observe(this.c);
+    this.c.addEventListener('mousemove', e => { const r = this.c.getBoundingClientRect(); this.hx = e.clientX - r.left; this.hy = e.clientY - r.top; this.render(); });
+    this.c.addEventListener('mouseleave', () => { this.hx = null; this.render(); });
+    CHARTS.push(this);
+  }
+  /* arrs: number[][]；null 表示缺失 */
+  update(data, arrs){
+    const k = JSON.stringify(arrs); this.data = data;
+    if(k === this.key){ this.render(); return; }
+    this.key = k;
+    this.from = arrs.map((a, i) => a.map((v, j) => {
+      const p = this.cur[i]; if(!p || !p.length) return v;
+      return p[j] != null ? p[j] : p[p.length - 1];
+    }));
+    this.tgt = arrs; this.t0 = performance.now(); cancelAnimationFrame(this.raf);
+    const step = now => {
+      const t = Math.min(1, (now - this.t0) / 450), e = ease(t);
+      this.cur = this.tgt.map((a, i) => a.map((v, j) => { const f = this.from[i][j]; return (v == null || f == null) ? v : f + (v - f) * e; }));
+      this.render(); if(t < 1) this.raf = requestAnimationFrame(step);
+    };
+    this.raf = requestAnimationFrame(step);
+  }
+  render(){ if(!this.c.isConnected || this.c.offsetParent === null) return; const {ctx, w, h} = fit(this.c); if(this.data) this.paint(ctx, w, h); }
+}
+
+class LineChart extends Chart{
+  paint(ctx, w, h){
+    const {series, labels} = this.data, cur = this.cur;
+    const isRight = i => !!(series[i] && series[i].axis === 'right');
+    const pick = want => cur.flatMap((a, i) => (isRight(i) === want ? a : []))
+                          .filter(v => v != null && isFinite(v));
+    const vL = pick(false), vR = pick(true);
+    if(!vL.length && !vR.length) return;
+    const hasR = vR.length > 0;
+    const pad = {l:46, r:hasR ? 52 : 14, t:12, b:24};
+
+    // 左轴范围
+    let lo = Math.min(...vL), hi = Math.max(...vL);
+    const m = (hi - lo || Math.abs(hi) || 1) * .08; lo -= m; hi += m;
+    if(this.data.zero) lo = Math.min(lo, 0);
+    const ticks = niceTicks(lo, hi, 4); lo = ticks[0]; hi = ticks[ticks.length - 1];
+    // 右轴范围（独立标尺，避免把准确率与损失画在同一量纲上）
+    let lo2 = 0, hi2 = 1, ticksR = [];
+    if(hasR){
+      lo2 = Math.min(...vR); hi2 = Math.max(...vR);
+      const m2 = (hi2 - lo2 || Math.abs(hi2) || 1) * .08; lo2 -= m2; hi2 += m2;
+      if(this.data.rightZero) lo2 = Math.min(lo2, 0);
+      ticksR = niceTicks(lo2, hi2, 4); lo2 = ticksR[0]; hi2 = ticksR[ticksR.length - 1];
+    }
+
+    const n = Math.max(...cur.map(a => a.length)), pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
+    const X = i => pad.l + (n <= 1 ? pw / 2 : pw * i / (n - 1));
+    const YL = v => pad.t + ph * (1 - (v - lo) / (hi - lo));
+    const YR = v => pad.t + ph * (1 - (v - lo2) / (hi2 - lo2));
+    const Yof = (v, si) => isRight(si) ? YR(v) : YL(v);
+
+    ctx.font = FONT; ctx.textBaseline = 'middle'; ctx.textAlign = 'right';
+    ticks.forEach(t => { const y = YL(t); ctx.strokeStyle = cssv('--line'); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(pad.l, Math.round(y) + .5); ctx.lineTo(w - pad.r, Math.round(y) + .5); ctx.stroke(); ctx.fillStyle = cssv('--mute'); ctx.fillText(tickFmt(t), pad.l - 8, y); });
+    if(hasR){ ctx.textAlign = 'left'; ticksR.forEach(t => { ctx.fillStyle = cssv('--mute'); ctx.fillText(tickFmt(t), w - pad.r + 8, YR(t)); }); }
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = cssv('--mute');
+    const stepX = Math.max(1, Math.ceil(n / 8));
+    for(let i = 0; i < n; i += stepX){ const lb = labels ? labels[i] : i + 1; ctx.fillText(lb == null ? '' : lb, X(i), h - pad.b + 7); }
+    series.forEach((s, si) => {
+      const a = cur[si]; if(!a || !a.length) return; const col = s.color;
+      if(si === 0 && this.data.fill){
+        /* 渐变填充：颜色可能是 oklch()，不能靠拼 alpha 后缀变透明 —— 改用透明终点 + globalAlpha 柔化 */
+        const g = ctx.createLinearGradient(0, pad.t, 0, pad.t + ph); g.addColorStop(0, col); g.addColorStop(1, 'transparent');
+        ctx.beginPath(); let st = false, last = 0;
+        a.forEach((v, i) => { if(v == null) return; if(!st){ ctx.moveTo(X(i), pad.t + ph); ctx.lineTo(X(i), YL(v)); st = true; } else ctx.lineTo(X(i), YL(v)); last = i; });
+        if(st){ ctx.lineTo(X(last), pad.t + ph); ctx.closePath(); ctx.save(); ctx.globalAlpha = .16; ctx.fillStyle = g; ctx.fill(); ctx.restore(); }
+      }
+      ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.setLineDash(s.dash ? [5, 4] : []); ctx.beginPath();
+      let st = false; a.forEach((v, i) => { if(v == null){ st = false; return; } if(!st){ ctx.moveTo(X(i), Yof(v, si)); st = true; } else ctx.lineTo(X(i), Yof(v, si)); });
+      ctx.stroke(); ctx.setLineDash([]);
+      if(a.length <= 40) a.forEach((v, i) => { if(v == null) return; ctx.beginPath(); ctx.arc(X(i), Yof(v, si), a.length === 1 ? 4 : 2.6, 0, 7); ctx.fillStyle = cssv('--surface'); ctx.fill(); ctx.lineWidth = 1.8; ctx.strokeStyle = col; ctx.stroke(); });
+    });
+    if(this.hx != null && n > 0){
+      const idx = Math.max(0, Math.min(n - 1, Math.round((this.hx - pad.l) / pw * (n - 1)))), x = X(idx);
+      ctx.strokeStyle = cssv('--line2'); ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, pad.t + ph); ctx.stroke(); ctx.setLineDash([]);
+      const rows = []; series.forEach((s, si) => { const v = this.tgt[si] ? this.tgt[si][idx] : null; if(v != null){ rows.push([s.name, fmt(v, 5), s.color]); ctx.beginPath(); ctx.arc(x, Yof(this.cur[si][idx], si), 4, 0, 7); ctx.fillStyle = s.color; ctx.fill(); } });
+      const title = (labels ? labels[idx] : idx + 1), bw = 158, bh = 22 + rows.length * 18; let bx = x + 12; if(bx + bw > w - 4) bx = x - bw - 12; const by = Math.max(4, pad.t + 6);
+      ctx.fillStyle = cssv('--surface'); ctx.strokeStyle = cssv('--line2'); ctx.lineWidth = 1; roundRect(ctx, bx, by, bw, bh, 8); ctx.fill(); ctx.stroke();
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = cssv('--mute'); ctx.fillText('第 ' + title + ' 轮', bx + 10, by + 12);
+      rows.forEach((r, i) => { const y = by + 30 + i * 18; ctx.fillStyle = r[2]; ctx.fillRect(bx + 10, y - 1, 8, 2.5); ctx.fillStyle = cssv('--ink2'); ctx.fillText(r[0], bx + 24, y); ctx.textAlign = 'right'; ctx.fillStyle = cssv('--ink'); ctx.fillText(r[1], bx + bw - 10, y); ctx.textAlign = 'left'; });
+    }
+  }
+}
+
+class HBarChart extends Chart{   /* 水平条形：各层梯度范数 / 鲁棒性 MAE */
+  paint(ctx, w, h){
+    const items = this.data.items, a = this.cur[0] || []; if(!items.length) return;
+    const lw = Math.min(170, w * .40), pad = {t:6, b:6, r:70}, rowH = (h - pad.t - pad.b) / items.length, mx = Math.max(...a, 1e-12);
+    ctx.font = FONT; ctx.textBaseline = 'middle';
+    items.forEach((it, i) => {
+      const y = pad.t + i * rowH + rowH / 2, bh = Math.min(14, rowH * .55), bw = (w - lw - pad.r) * (a[i] / mx);
+      ctx.textAlign = 'right'; ctx.fillStyle = cssv('--mute');
+      let nm = it.name.replace(/\.W$/, ''); while(ctx.measureText(nm).width > lw - 10 && nm.length > 4) nm = '…' + nm.slice(2);
+      ctx.fillText(nm, lw - 8, y);
+      ctx.fillStyle = cssv('--line'); roundRect(ctx, lw, y - bh / 2, w - lw - pad.r, bh, bh / 2); ctx.fill();
+      const hot = this.hy != null && Math.abs(this.hy - y) < rowH / 2;
+      ctx.fillStyle = hot ? cssv('--ink') : (it.color || cssv('--c2'));
+      roundRect(ctx, lw, y - bh / 2, Math.max(bh, bw), bh, bh / 2); ctx.fill();
+      ctx.textAlign = 'left'; ctx.fillStyle = cssv('--ink2');
+      ctx.fillText(it.text != null ? it.text : a[i].toExponential(1), lw + Math.max(bh, bw) + 8, y);
+    });
+  }
+}
+
+class HistChart extends Chart{   /* 权重直方图 */
+  paint(ctx, w, h){
+    const L = this.data.layer, a = this.cur[0] || []; if(!L) return;
+    const pad = {l:12, r:12, t:26, b:22}, pw = w - pad.l - pad.r, ph = h - pad.t - pad.b, n = a.length, bw = pw / n, mx = Math.max(...a, 1);
+    ctx.font = FONT; ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillStyle = cssv('--mute');
+    ctx.fillText(`μ=${L.mean}  σ=${L.std}  n=${L.count.toLocaleString()}`, pad.l, 10);
+    let hov = -1; if(this.hx != null) hov = Math.floor((this.hx - pad.l) / bw);
+    a.forEach((v, i) => { const bh = ph * v / mx; ctx.fillStyle = i === hov ? cssv('--ink') : cssv('--c2'); roundRect(ctx, pad.l + i * bw + 1, pad.t + ph - bh, Math.max(1.5, bw - 2), Math.max(bh, 1), Math.min(3, bw / 2)); ctx.fill(); });
+    ctx.strokeStyle = cssv('--line2'); ctx.beginPath(); ctx.moveTo(pad.l, pad.t + ph + .5); ctx.lineTo(w - pad.r, pad.t + ph + .5); ctx.stroke();
+    ctx.fillStyle = cssv('--mute'); ctx.textAlign = 'left'; ctx.fillText(tickFmt(L.edges[0]), pad.l, h - 9); ctx.textAlign = 'right'; ctx.fillText(tickFmt(L.edges[L.edges.length - 1]), w - pad.r, h - 9);
+    if(hov >= 0 && hov < n){ const t = `[${tickFmt(L.edges[hov])}, ${tickFmt(L.edges[hov + 1])}]  ×${L.hist[hov]}`; ctx.textAlign = 'center'; ctx.fillStyle = cssv('--ink'); ctx.fillText(t, w / 2, h - 9); }
+  }
+}
+
+class GroupedBarChart extends Chart{  /* 分组柱状图，支持虚线阈值与悬停浮窗 */
+  paint(ctx, w, h){
+    const {series, labels, threshold} = this.data, cur = this.cur; if(!labels || !labels.length) return;
+    const pad = {l:46, r:14, t:14, b:30}, pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
+    const vals = cur.flat().filter(v => v != null && isFinite(v)); if(!vals.length) return;
+    let hi = Math.max(...vals, threshold || 0) * 1.12;
+    const ticks = niceTicks(0, hi, 4); hi = ticks[ticks.length - 1] || 1;
+    const Y = v => pad.t + ph * (1 - v / hi);
+    ctx.font = FONT; ctx.textBaseline = 'middle'; ctx.textAlign = 'right';
+    ticks.forEach(t => { const y = Y(t); ctx.strokeStyle = cssv('--line'); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(pad.l, Math.round(y) + .5); ctx.lineTo(w - pad.r, Math.round(y) + .5); ctx.stroke(); ctx.fillStyle = cssv('--mute'); ctx.fillText(tickFmt(t), pad.l - 8, y); });
+    if(threshold != null){ const yt = Y(threshold); ctx.strokeStyle = cssv('--c4'); ctx.lineWidth = 1.4; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(pad.l, yt); ctx.lineTo(w - pad.r, yt); ctx.stroke(); ctx.setLineDash([]); }
+    const ng = labels.length, ns = series.length, gw = pw / ng, bw = Math.min(26, Math.max(4, (gw * .74) / ns));
+    let hov = -1; if(this.hx != null && this.hx >= pad.l && this.hx <= w - pad.r) hov = Math.min(ng - 1, Math.max(0, Math.floor((this.hx - pad.l) / gw)));
+    labels.forEach((lb, gi) => {
+      const gx = pad.l + gi * gw + (gw - ns * bw) / 2;
+      if(gi === hov){ ctx.fillStyle = cssv('--surface2'); ctx.fillRect(pad.l + gi * gw + 2, pad.t, gw - 4, ph); }
+      series.forEach((s, si) => {
+        const v = (cur[si] && cur[si][gi] != null) ? cur[si][gi] : 0; const y = Y(v), bh = Math.max(1, pad.t + ph - y);
+        ctx.fillStyle = s.color; ctx.globalAlpha = (hov >= 0 && hov !== gi) ? .68 : 1;
+        roundRect(ctx, gx + si * bw + 1, y, Math.max(2, bw - 2), bh, Math.min(3, bw / 2)); ctx.fill(); ctx.globalAlpha = 1;
+      });
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = gi === hov ? cssv('--ink') : cssv('--mute');
+      ctx.fillText(String(lb).slice(0, ng > 8 ? 7 : 14), pad.l + gi * gw + gw / 2, h - pad.b + 8);
+    });
+    if(hov >= 0){
+      const bwTip = 158, bhTip = 24 + ns * 18; let bx = pad.l + hov * gw + gw / 2 + 12; if(bx + bwTip > w - 4) bx = pad.l + hov * gw + gw / 2 - bwTip - 12;
+      ctx.fillStyle = cssv('--surface'); ctx.strokeStyle = cssv('--line2'); ctx.lineWidth = 1; roundRect(ctx, bx, pad.t + 4, bwTip, bhTip, 8); ctx.fill(); ctx.stroke();
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = cssv('--mute'); ctx.fillText(String(labels[hov]), bx + 10, pad.t + 16);
+      series.forEach((s, i) => { const y = pad.t + 34 + i * 18; ctx.fillStyle = s.color; ctx.fillRect(bx + 10, y - 4, 8, 8); ctx.fillStyle = cssv('--ink2'); ctx.fillText(s.name, bx + 24, y); ctx.textAlign = 'right'; ctx.fillStyle = cssv('--ink'); ctx.fillText(fmt(this.tgt[i][hov], 4), bx + bwTip - 10, y); ctx.textAlign = 'left'; });
+    }
+  }
+}
+
+/* 指标行图：每个指标一行、各自独立标尺（条长按行内最大值归一），
+   数值直接标在条尾 —— 避免把「秒 / 毫秒 / 比例」硬塞进同一条 Y 轴。 */
+class MetricRowsChart extends Chart{
+  paint(ctx, w, h){
+    const {rows, series} = this.data; if(!rows || !rows.length) return;
+    const cur = this.cur || [];
+    const pad = {l:104, r:78, t:6, b:6};
+    const rowH = (h - pad.t - pad.b) / rows.length;
+    const bh = Math.min(11, rowH * .26), gap = 4;
+    ctx.font = FONT; ctx.textBaseline = 'middle';
+    rows.forEach((r, ri) => {
+      const vals = (cur[ri] && cur[ri].length ? cur[ri] : r.values) || [];
+      const mx = Math.max(...vals.map(v => Math.abs(v || 0)), 1e-12);
+      const cy = pad.t + ri * rowH + rowH / 2;
+      ctx.textAlign = 'right'; ctx.fillStyle = cssv('--mute');
+      ctx.fillText(r.label, pad.l - 10, cy);
+      vals.forEach((v, si) => {
+        const y = cy + (si - (series.length - 1) / 2) * (bh + gap) - bh / 2;
+        const bw = (w - pad.l - pad.r) * (Math.abs(v || 0) / mx);
+        ctx.fillStyle = series[si].color;
+        roundRect(ctx, pad.l, y, Math.max(3, bw), bh, bh / 2); ctx.fill();
+        ctx.textAlign = 'left'; ctx.fillStyle = cssv('--ink2');
+        ctx.fillText(r.texts ? r.texts[si] : fmt(v, 3), pad.l + Math.max(3, bw) + 8, y + bh / 2);
+      });
+    });
+  }
+}
+
+const chLoss = new LineChart('cv-loss'), chBatch = new LineChart('cv-batch'), chAnom = new LineChart('cv-anom'),
+      chRuns = new LineChart('cv-runs'),
+      chGrad = new HBarChart('cv-grad'), chHist = new HistChart('cv-hist'), chRob = new HBarChart('cv-rob'),
+      chBArch = new GroupedBarChart('cv-b-arch'), chBPt = new MetricRowsChart('cv-b-pt'),
+      chBRob = new GroupedBarChart('cv-b-rob'), chBCl = new GroupedBarChart('cv-b-cl');
+
+/* 任务预览（线性拟合 / 决策边界 / 混淆矩阵 / 预测散点）— 同样高清 */
+let lastSnap = null;
+/* 运行历史相关状态提前声明：setTheme() 在脚本后半段之前就会调用 renderRuns() */
+let runsData = [], runMetric = 'val_loss', runsLoaded = false, runTaskFilter = null;
+const RUN_COLORS = ['--c1','--c2','--c3','--c4','--c5'];
+function drawPreview(){
+  const c = $('cv-prev'), {ctx, w, h} = fit(c), s = lastSnap; if(!s) return; const pv = s.preview || {};
+  $('em-prev').classList.toggle('hide', !!pv.kind && pv.kind !== 'mnist'); if(!pv.kind || pv.kind === 'mnist') return;
+  const ink = cssv('--ink'), c2 = cssv('--c2'), c3 = cssv('--c3'), line = cssv('--line'); ctx.font = FONT; ctx.textBaseline = 'middle';
+  const axes = (x0, y0, x1, y1) => { ctx.strokeStyle = line; ctx.lineWidth = 1; ctx.strokeRect(x0 + .5, y0 + .5, x1 - x0, y1 - y0); };
+  if(pv.kind === 'linear'){
+    $('pv-sub').textContent = '数据点与拟合直线';
+    const P = pv.points, L = pv.line, xs = [...P, ...L].map(p => p[0]), ys = [...P, ...L].map(p => p[1]), x0 = 14, y0 = 10, x1 = w - 14, y1 = h - 14;
+    const xl = Math.min(...xs), xh = Math.max(...xs), yl = Math.min(...ys), yh = Math.max(...ys), sx = x => x0 + (x1 - x0) * (x - xl) / ((xh - xl) || 1), sy = y => y1 - (y1 - y0) * (y - yl) / ((yh - yl) || 1);
+    axes(x0, y0, x1, y1); P.forEach(p => { ctx.beginPath(); ctx.arc(sx(p[0]), sy(p[1]), 3, 0, 7); ctx.fillStyle = c3; ctx.fill(); });
+    ctx.strokeStyle = ink; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.beginPath(); L.forEach((p, i) => i ? ctx.lineTo(sx(p[0]), sy(p[1])) : ctx.moveTo(sx(p[0]), sy(p[1]))); ctx.stroke();
+  } else if(pv.kind === 'logistic'){
+    $('pv-sub').textContent = '概率场与验证样本';
+    const g = pv.grid, R = g.length, C = g[0].length, x0 = 14, y0 = 10, x1 = w - 14, y1 = h - 14, cw = (x1 - x0) / C, ch = (y1 - y0) / R;
+    for(let r = 0; r < R; r++) for(let k = 0; k < C; k++){ const p = g[R - 1 - r][k], v = Math.round(240 - p * 150); ctx.fillStyle = `rgba(${v},${v},${v},${document.documentElement.dataset.theme === 'dark' ? .0 : 1})`; if(document.documentElement.dataset.theme === 'dark'){ const d = Math.round(30 + p * 60); ctx.fillStyle = `rgb(${d},${d},${d})`; } ctx.fillRect(x0 + k * cw, y0 + r * ch, cw + .6, ch + .6); }
+    axes(x0, y0, x1, y1); pv.points.forEach(p => { const px = x0 + (p[0] + 3) / 6 * (x1 - x0), py = y1 - (p[1] + 3) / 6 * (y1 - y0); ctx.beginPath(); ctx.arc(px, py, 3.4, 0, 7); if(p[2]){ ctx.fillStyle = ink; ctx.fill(); } else { ctx.fillStyle = cssv('--surface'); ctx.fill(); ctx.strokeStyle = ink; ctx.lineWidth = 1.6; ctx.stroke(); } });
+  } else if(pv.kind === 'iris'){
+    $('pv-sub').textContent = '验证集混淆矩阵';
+    const M = pv.confusion, n = M.length, mx = Math.max(...M.flat(), 1), pad = 82, cs = Math.min((w - pad - 14) / n, (h - 46) / n);
+    M.forEach((row, i) => row.forEach((v, j) => { const x = pad + j * cs, y = 10 + i * cs; const a = v / mx; ctx.fillStyle = document.documentElement.dataset.theme === 'dark' ? `rgba(250,250,250,${.06 + a * .8})` : `rgba(12,10,9,${.04 + a * .85})`; roundRect(ctx, x + 2, y + 2, cs - 4, cs - 4, 8); ctx.fill(); ctx.textAlign = 'center'; ctx.fillStyle = a > .5 ? cssv('--bg') : ink; ctx.font = '600 15px Inter,sans-serif'; ctx.fillText(v, x + cs / 2, y + cs / 2); ctx.font = FONT; }));
+    ctx.textAlign = 'right'; ctx.fillStyle = c2; pv.names.forEach((nm, i) => ctx.fillText(nm.slice(0, 11), pad - 8, 10 + i * cs + cs / 2));
+    ctx.textAlign = 'center'; pv.names.forEach((nm, j) => ctx.fillText(nm.slice(0, 11), pad + j * cs + cs / 2, 10 + n * cs + 12));
+  } else if(pv.kind === 'donkeycar'){
+    $('pv-sub').textContent = `MAE ${fmt(pv.metrics.mae)} · R² ${fmt(pv.metrics.r2, 3)}`;
+    const sz = Math.min(w, h) - 30, x0 = (w - sz) / 2, y0 = 10, sc = v => (v + 1) / 2; axes(x0, y0, x0 + sz, y0 + sz);
+    ctx.strokeStyle = c3; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(x0, y0 + sz); ctx.lineTo(x0 + sz, y0); ctx.stroke(); ctx.setLineDash([]);
+    pv.pairs.forEach(p => { ctx.beginPath(); ctx.arc(x0 + sc(p[0]) * sz, y0 + (1 - sc(p[1])) * sz, 3, 0, 7); ctx.fillStyle = ink; ctx.globalAlpha = .75; ctx.fill(); ctx.globalAlpha = 1; });
+    ctx.fillStyle = c2; ctx.textAlign = 'center'; ctx.fillText('真实转向角 →  预测转向角 ↑', w / 2, h - 8);
+  }
+}
+new ResizeObserver(drawPreview).observe($('cv-prev'));
+
+/* ======================================================================
+   KPI 数字滚动、状态渲染
+   ====================================================================== */
+const counters = {};
+function countTo(id, val, d = 4, suffix = ''){
+  const el = $(id); if(val === null || val === undefined || !isFinite(val)){ el.textContent = '—'; counters[id] = null; return; }
+  const from = counters[id] ?? val, t0 = performance.now(); counters[id] = val;
+  cancelAnimationFrame(el._r); const step = now => { const t = Math.min(1, (now - t0) / 500), v = from + (val - from) * ease(t); el.textContent = fmt(v, d) + suffix; if(t < 1) el._r = requestAnimationFrame(step); }; el._r = requestAnimationFrame(step);
+}
+const STATUS = {idle:'就绪', training:'训练中', completed:'已完成', stopped:'已停止', error:'出错'};
+let logCount = 0, layerSel = '', clearedAt = 0, lastStatus = null;
+function render(s){
+  lastSnap = s;
+  const pill = $('status-pill'); pill.className = 'pill ' + s.status; $('status-txt').textContent = STATUS[s.status] || s.status;
+  $('side-model').textContent = `${s.task} / ${s.arch}`; $('side-meta').textContent = `${s.model_info.params.toLocaleString()} 参数 · ${(s.model_info.flops / 1e6).toFixed(2)} MFLOPs`;
+  const sideSel = $('side-model-select');
+  if(sideSel){
+    sideSel.value = ({
+      'donkeycar/resnet_gn': 'donkeycar_resnet',
+      'donkeycar/cnn': 'donkeycar_cnn',
+      'donkeycar/vit': 'donkeycar_vit',
+      'mnist/lenet': 'mnist_lenet',
+      'mnist/vgg11': 'mnist_vgg11',
+    })[s.task + '/' + s.arch] || '';
+  }
+  const h = s.history, n = h.train_loss.length, isReg = (s.task === 'donkeycar' || s.task === 'linear');
+  countTo('k-epoch', s.epochs_done, 0); $('k-epoch-s').textContent = '/ ' + (s.epochs_total || '—') + ' 轮' + (s.elapsed_s ? ` · 已用 ${s.elapsed_s}s` : '');
+  countTo('k-tloss', n ? h.train_loss[n - 1] : null); $('k-vloss').textContent = '验证 ' + (n ? fmt(h.val_loss[n - 1]) : '—');
+  $('k-metric-l').textContent = isReg ? '验证 MAE' : '验证准确率';
+  if(n){ const m = h.val_metric[n - 1]; countTo('k-metric', isReg ? m : m * 100, isReg ? 4 : 2, isReg ? '' : '%'); const arr = h.val_metric.filter(v => v != null); $('k-best').textContent = '最佳 ' + (isReg ? fmt(Math.min(...arr)) : fmt(Math.max(...arr) * 100, 2) + '%'); } else { countTo('k-metric', null); $('k-best').textContent = '—'; }
+  $('k-params').textContent = s.model_info.params.toLocaleString(); $('k-lat').textContent = `单帧 ${s.model_info.latency_ms} ms`;
+  $('prog').classList.toggle('run', s.status === 'training'); $('prog-bar').style.width = (s.progress * 100).toFixed(1) + '%';
+  $('btn-start').disabled = s.status === 'training';
+
+  /* /predict 面板按当前模型能力给出提示：图像模型不能喂特征向量 */
+  const featTasks = ['iris', 'linear', 'logistic'];
+  const isFeatModel = featTasks.indexOf(s.task) >= 0;
+  $('vec-sub').textContent = isFeatModel
+    ? `当前模型：${s.task} / ${s.arch} — 需要 ${s.input_shape.length} 维特征向量`
+    : `当前模型：${s.task} / ${s.arch} — 需要图像输入 (${s.input_shape.join(', ')})，请改用图像接口或训练特征型模型`;
+  $('btn-vec').disabled = !isFeatModel;
+
+  const ink = cssv('--c1'), c2 = cssv('--c2'), c3 = cssv('--c3'), red = cssv('--c4'), has = n > 0;
+  $('em-loss').classList.toggle('hide', has);
+  /* 分类任务的准确率是 0~1 的比例，与损失量纲不同 —— 放到右轴独立标尺 */
+  const metricArr = isReg ? h.val_metric : h.val_metric.map(v => v == null ? null : v * 100);
+  const ser = [
+    {name:'训练损失', color:red, axis:'left'},
+    {name:'验证损失', color:ink, axis:'left'},
+    {name:isReg ? '验证 MAE' : '验证准确率 (%)', color:c2, dash:true, axis:isReg ? 'left' : 'right'},
+  ];
+  legend($('lg-loss'), ser);
+  chLoss.update({series:ser, labels:h.epoch, fill:true}, [h.train_loss, h.val_loss, metricArr]);
+  $('em-batch').classList.toggle('hide', s.batch_loss.length > 0);
+  chBatch.update({series:[{name:'batch', color:red}], labels:s.batch_step, fill:true}, [s.batch_loss]);
+  $('em-grad').classList.toggle('hide', s.grads.length > 0); chGrad.update({items:s.grads}, [s.grads.map(g => g.norm)]);
+  $('em-hist').classList.toggle('hide', s.params.length > 0);
+  const sel = $('sel-layer'), names = s.params.map(p => p.name);
+  if(sel.options.length !== names.length || names.some((x, i) => sel.options[i] && sel.options[i].value !== x)){ sel.innerHTML = names.map(x => `<option>${x}</option>`).join(''); if(names.includes(layerSel)) sel.value = layerSel; else layerSel = sel.value; }
+  const L = s.params.find(p => p.name === sel.value) || s.params[0]; chHist.update({layer:L}, [L ? L.hist : []]);
+  drawPreview();
+  const lines = s.logs; if(lines.length !== logCount){ const t = $('term'); const atEnd = t.scrollTop + t.clientHeight >= t.scrollHeight - 30; t.innerHTML = lines.slice(clearedAt).map(x => { const m = x.match(/^\[(.*?)\]\s?(.*)$/); return `<div><span class="t">${m ? m[1] : ''}</span>${m ? m[2] : x}</div>`; }).join(''); if(atEnd) t.scrollTop = t.scrollHeight; logCount = lines.length; }
+
+  /* 训练结束时刷新运行历史（多曲线对比页自动出现新曲线） */
+  if(s.status !== lastStatus){
+    lastStatus = s.status;
+    if(s.status === 'completed' || s.status === 'stopped') loadRuns(true);
+  }
+}
+$('sel-layer').addEventListener('change', e => { layerSel = e.target.value; if(lastSnap) render(lastSnap); });
+$('btn-clearlog').onclick = () => { clearedAt = lastSnap ? lastSnap.logs.length : 0; $('term').innerHTML = ''; };
+
+/* 左下角快捷切换当前模型（任意页面可用） */
+$('side-model-select').onchange = async e => {
+  const preset = e.target.value;
+  if(!preset) return;
+  try{
+    const r = await api('/api/model/load', {preset: preset});
+    render(await api('/api/snapshot'));
+    toast('已切换模型：' + (r.model_info.tag || preset));
+    const driveSel = $('sel-drive-model');
+    if(driveSel && preset.indexOf('donkeycar_') === 0) driveSel.value = preset;
+    if(window.MF3D && scene3d && sceneMode === 'arch3d'){ await loadSceneData(); }
+  }catch(err){
+    toast(err.message);
+    try{ render(await api('/api/snapshot')); }catch(e2){}
+  }
+};
+
+/* SSE 实时通道 */
+const es = new EventSource('/events');
+es.onopen = () => { $('sse-dot').className = 'dot live'; $('sse-txt').textContent = '实时连接中'; };
+es.onerror = () => { $('sse-dot').className = 'dot'; $('sse-txt').textContent = '正在重连…'; };
+es.onmessage = ev => { try{ render(JSON.parse(ev.data)); }catch(e){} };
+
+/* ======================================================================
+   导航、主题、快捷键
+   ====================================================================== */
+const PAGES = {
+  train:['一键训练', '选择任务与架构，实时观察训练过程。'],
+  infer:['推理与仿真', '手写识别、赛道推理、扰动扫描与闭环驾驶仿真。'],
+  lab:['原理实验室', '计算图、梯度检验、异常训练与数据预处理。'],
+  runs:['运行历史', '多轮训练曲线叠加对比，并一键导出实验报告。'],
+  arch3d:['架构 3D', '逐层拆解架构、三维查看权重参数、动画演示反向传播。'],
+  drive:['实时驾驶', '多台 Agent 同时闭环驾驶，并实时评估 DonkeyCar 测试集。'],
+  bench:['对比总览', '三架构同协议评测与 PyTorch 基准。'],
+};
+let padInited = false, labInited = false, sceneInited = false;
+function go(p, pushHash = true){
+  if(!PAGES[p]) p = 'train';
+  document.querySelectorAll('.page').forEach(e => e.classList.toggle('active', e.id === 'page-' + p));
+  document.querySelectorAll('.nav-item').forEach(e => e.classList.toggle('active', e.dataset.page === p));
+  $('page-title').textContent = PAGES[p][0]; $('page-desc').textContent = PAGES[p][1];
+  if(pushHash && location.hash !== '#' + p) history.replaceState(null, '', '#' + p);
+  window.scrollTo({top:0});
+  requestAnimationFrame(() => {
+    CHARTS.forEach(c => c.render());
+    if(p === 'infer' && !padInited){ padInited = true; initPad(); }
+    if(p === 'lab' && !labInited){ labInited = true; loadGraph('mlp'); loadAnom('explosion'); }
+    if(p === 'runs') loadRuns();
+    if(p === 'bench') loadBench();
+    /* 3D 场景必须在页面可见时创建，否则 canvas 尺寸为 0 */
+    if(p === 'arch3d' && !sceneInited){ sceneInited = true; setSceneMode(sceneMode); }
+    if(p === 'drive'){ ensureDrive3D(); drawDriveMap(); }
+  });
+}
+document.querySelectorAll('.nav-item').forEach(b => b.onclick = () => go(b.dataset.page));
+/* 浏览器前进/后退与手动改 hash 都能正确切页 */
+window.addEventListener('hashchange', () => go((location.hash || '#train').slice(1), false));
+const KEYS = {1:'train', 2:'infer', 3:'lab', 4:'runs', 5:'arch3d', 6:'drive', 7:'bench'};
+window.addEventListener('keydown', e => {
+  const tag = (e.target.tagName || '').toLowerCase();
+  if(e.key === 'Enter' && (e.ctrlKey || e.metaKey)){ go('train'); startTrain(); return; }
+  if(e.key === 'Escape'){ $('lb').classList.remove('on'); if(lastSnap && lastSnap.status === 'training') api('/api/train/stop', {}).catch(() => {}); return; }
+  if(tag === 'input' || tag === 'select' || tag === 'textarea' || e.ctrlKey || e.metaKey) return;
+  if(KEYS[e.key]) go(KEYS[e.key]);
+});
+function setTheme(t){
+  document.documentElement.dataset.theme = t; localStorage.setItem('mf-theme', t);
+  $('theme-btn').querySelector('span').textContent = t === 'dark' ? '切换浅色' : '切换深色';
+  setTimeout(() => {
+    CHARTS.forEach(c => c.render()); drawPreview();
+    if(lastSnap) render(lastSnap);
+    redrawSim(); redrawAnom(); renderBenchCharts(); renderRuns();
+    drawDriveMap(); drawLiveScatter();
+    if(window.MF3D && drive3d){ drive3d.applyTheme(); }
+    if(window.MF3D && scene3d){ MF3D.applyTheme(scene3d); loadSceneData(); }
+  }, 30);
+}
+$('theme-btn').onclick = () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+setTheme(localStorage.getItem('mf-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+
+/* ======================================================================
+   训练配置
+   ====================================================================== */
+const ARCH = {
+  donkeycar:[['resnet_gn', 'ResNet-GN（44,337 参数 · 主模型）'], ['cnn', 'LeNet 风格 CNN'], ['vit', 'ViT-Tiny（44,353 参数）']],
+  mnist:[['lenet', 'LeNet-5（28×28）'], ['resnet_gn', 'ResNet-GN 分类版'], ['vgg11', 'VGG11（width=0.25）'], ['mobilenet', 'MobileNetV1']],
+  iris:[['mlp', 'MLP 4→16→3']], logistic:[['linear', '线性逻辑分类器']], linear:[['linear', '线性回归器']]
+};
+const PRESET = {
+  donkeycar:{fast:[3, 240, 32, -3], std:[6, 400, 32, -3], fine:[12, 900, 32, -3]},
+  mnist:{fast:[1, 500, 64, -2.7], std:[3, 2000, 64, -3], fine:[5, 6000, 64, -3]},
+  iris:{fast:[15, 150, 16, -1.7], std:[30, 150, 16, -1.7], fine:[60, 150, 16, -2]},
+  logistic:{fast:[10, 200, 32, -1.3], std:[20, 300, 32, -1.3], fine:[40, 600, 32, -1.5]},
+  linear:{fast:[12, 100, 16, -1.3], std:[25, 150, 16, -1.3], fine:[50, 400, 16, -1.5]}
+};
+let optimizer = 'adam';
+const lrOf = () => Math.pow(10, +$('cfg-lr-s').value);
+function showLr(){ $('lr-val').textContent = lrOf().toExponential(1); }
+$('cfg-lr-s').addEventListener('input', showLr);
+function applyPreset(k){ const t = $('cfg-task').value, p = PRESET[t][k]; $('cfg-epochs').value = p[0]; $('cfg-samples').value = p[1]; $('cfg-bs').value = p[2]; $('cfg-lr-s').value = p[3]; showLr(); }
+function onArch(){ $('vit-box').style.display = ($('cfg-arch').value === 'vit') ? 'block' : 'none'; }
+function onTask(){ const t = $('cfg-task').value; $('cfg-arch').innerHTML = ARCH[t].map(a => `<option value="${a[0]}">${a[1]}</option>`).join(''); applyPreset('std'); onArch(); }
+$('cfg-arch').addEventListener('change', onArch);
+$('cfg-task').addEventListener('change', onTask); document.querySelectorAll('#chips .chip').forEach(c => c.onclick = () => applyPreset(c.dataset.p)); onTask();
+$('seg-opt').querySelectorAll('button').forEach(b => b.onclick = () => { optimizer = b.dataset.v; $('seg-opt').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); });
+function startTrain(){
+  return busy($('btn-start'), async () => {
+    await api('/api/train/start', {
+      task: $('cfg-task').value, arch: $('cfg-arch').value,
+      epochs: numOf('cfg-epochs', 6), samples: numOf('cfg-samples', 400),
+      optimizer, lr: lrOf(), batch_size: numOf('cfg-bs', 32),
+      clip_norm: numOf('cfg-clip', 0), l2_reg: numOf('cfg-l2', 0), momentum: numOf('cfg-mom', 0.9),
+      scale: $('cfg-scale').value, seed: numOf('cfg-seed', 42),
+      augment: $('cfg-aug').checked, early_stop: $('cfg-es').checked, lr_schedule: $('cfg-lrs').checked,
+      vit_dim: +$('vit-dim').value, vit_depth: +$('vit-depth').value,
+      vit_heads: +$('vit-heads').value, vit_patch: +$('vit-patch').value,
+    });
+    clearedAt = 0; logCount = 0; toast('训练已启动');
+  });
+}
+$('btn-start').onclick = startTrain;
+$('btn-stop').onclick = () => busy(null, async () => { await api('/api/train/stop', {}); toast('已请求停止'); });
+/* 往返误差展示：0 显示为「diff 0（完全一致）」，非 0 用科学计数法 */
+const diffTxt = d => (d === 0 ? 'diff 0（完全一致）' : `diff ${d.toExponential(1)}`);
+$('btn-save').onclick = () => busy($('btn-save'), async () => { const r = await api('/api/model/save', {}); $('persist-msg').textContent = diffTxt(r.roundtrip_max_diff); toast('已保存 ' + r.path); });
+async function loadPreset(p){ return busy(null, async () => { const r = await api('/api/model/load', {preset:p}); $('persist-msg').textContent = diffTxt(r.roundtrip_max_diff); toast('已加载 ' + r.model_info.tag); render(await api('/api/snapshot')); }); }
+$('btn-reload').onclick = () => loadPreset('');
+document.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => loadPreset(b.dataset.preset));
+$('btn-csv').onclick = () => { if(!lastSnap || !lastSnap.history.epoch.length) return toast('暂无数据可导出'); const h = lastSnap.history; const rows = ['epoch,train_loss,val_loss,val_metric,lr', ...h.epoch.map((e, i) => [e, h.train_loss[i], h.val_loss[i], h.val_metric[i], h.lr[i]].join(','))]; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([rows.join('\n')], {type:'text/csv'})); a.download = 'history.csv'; a.click(); };
+
+/* ======================================================================
+   训练运行历史：多曲线叠加对比 + 明细表 + 报告导出
+   ====================================================================== */
+async function loadRuns(force){
+  if(runsLoaded && !force) { renderRuns(); return; }
+  runsLoaded = true;
+  try{
+    const d = await api('/api/runs');
+    runsData = d.runs || [];
+    renderRuns();
+  }catch(e){ toast(e.message); }
+}
+function runMetricArray(r){
+  const v = runMetric === 'val_loss' ? r.val_loss : r.val_metric;
+  if(runMetric !== 'val_metric') return v;
+  return (v || []).map(x => x == null ? null : (r.metric_name === 'Acc' ? x * 100 : x));
+}
+function renderRuns(){
+  if(!runsData) return;
+  /* 任务筛选：不同任务的损失/指标量纲不同，默认只对比最近一次运行所属的任务 */
+  const tasks = [...new Set(runsData.map(r => r.task))];
+  const selT = $('sel-run-task');
+  if(!tasks.length){
+    /* 还没有任何运行记录时不要锁定筛选值，否则首次有数据时会被钉死在「全部任务」 */
+    selT.dataset.sig = ''; selT.innerHTML = '<option value="__all__">全部任务</option>';
+    runTaskFilter = null;
+  } else {
+    const opts = tasks.map(t => `<option value="${t}">${t}</option>`).join('') + '<option value="__all__">全部任务</option>';
+    if(selT.dataset.sig !== opts){
+      selT.dataset.sig = opts; selT.innerHTML = opts;
+      const dflt = (runTaskFilter !== null && (runTaskFilter === '__all__' || tasks.includes(runTaskFilter)))
+        ? runTaskFilter : tasks[0];
+      runTaskFilter = dflt; selT.value = dflt;
+    }
+  }
+  const wantAll = runTaskFilter === '__all__';
+  const pool = wantAll ? runsData : runsData.filter(r => r.task === runTaskFilter);
+  const show = pool.slice(0, 12).reverse();          // 最近的最多 12 次，最多同屏对比
+  const series = show.map((r, i) => ({name:`#${r.id} ${r.label}`, color:cssv(RUN_COLORS[i % RUN_COLORS.length])}));
+  const arrays = show.map(r => runMetricArray(r));
+  const maxEp = Math.max(1, ...arrays.map(a => a.length));
+  const labels = Array.from({length:maxEp}, (_, i) => i + 1);
+  legend($('lg-runs'), series);
+  chRuns.update({series, labels, fill:false}, arrays);
+  $('em-runs').classList.toggle('hide', show.length > 0);
+  $('runs-sub').textContent = show.length
+    ? `共 ${runsData.length} 次运行 · 本筛选下 ${pool.length} 次，对比展示最近 ${show.length} 次`
+    : '尚无运行记录';
+
+  const tb = $('tbl-runs').querySelector('tbody');
+  if(!runsData.length){ tb.innerHTML = `<tr class="empty-row"><td colspan="12">尚无运行记录 —— 完成一次「一键训练」后自动写入</td></tr>`; return; }
+  if(!pool.length){ tb.innerHTML = `<tr class="empty-row"><td colspan="12">该任务下暂无运行记录</td></tr>`; return; }
+  tb.innerHTML = pool.map((r, i) => {
+    const c = r.cfg || {}, isAcc = r.metric_name === 'Acc';
+    const bm = r.best_metric;
+    const bms = (bm == null) ? '—' : (isAcc ? `${(bm*100).toFixed(2)}%` : bm.toFixed(4));
+    const st = r.status === 'completed' ? `<span class="badge good">已完成</span>`
+             : r.status === 'stopped' ? `<span class="badge warn">已中止</span>`
+             : `<span class="badge bad">${r.status}</span>`;
+    return `<tr style="animation:rise .4s var(--ease) ${Math.min(i,8)*40}ms both">
+      <td class="num">${r.id}</td>
+      <td><b>${r.label}</b></td>
+      <td class="num">${c.epochs ?? '—'}</td>
+      <td class="num">${c.samples ?? '—'}</td>
+      <td>${c.optimizer ?? '—'}</td>
+      <td class="num">${c.lr != null ? (+c.lr).toExponential(2) : '—'}</td>
+      <td class="num">${c.batch_size ?? '—'}</td>
+      <td class="num"><b>${bms}</b><span style="color:var(--faint)"> ${r.metric_name}</span></td>
+      <td class="num">${(r.params||0).toLocaleString()}</td>
+      <td class="num">${r.elapsed_s ?? '—'} s</td>
+      <td>${st}</td>
+      <td><button class="rowlink" data-del-run="${r.id}">删除</button></td>
+    </tr>`;
+  }).join('');
+  tb.querySelectorAll('[data-del-run]').forEach(b => b.onclick = async () => {
+    await api('/api/runs/delete', {id: +b.dataset.delRun});
+    toast(`已删除运行 #${b.dataset.delRun}`);
+    await loadRuns(true);
+  });
+}
+seg('seg-runmetric', v => { runMetric = v; renderRuns(); });
+$('sel-run-task').addEventListener('change', e => { runTaskFilter = e.target.value; renderRuns(); });
+$('btn-runs-clear').onclick = () => busy($('btn-runs-clear'), async () => {
+  await api('/api/runs/clear', {}); toast('已清空运行历史'); await loadRuns(true);
+});
+$('btn-runs-zip').onclick = () => busy($('btn-runs-zip'), async () => {
+  await downloadFile('/api/report.zip', 'MiniFlows_实验报告.zip');
+  toast('报告已导出（Markdown + 图表 PNG）');
+});
+$('btn-report-zip').onclick = () => busy($('btn-report-zip'), async () => {
+  await downloadFile('/api/report.zip', 'MiniFlows_实验报告.zip');
+  toast('报告已导出（Markdown + 图表 PNG）');
+});
+$('btn-report-md').onclick = () => busy($('btn-report-md'), async () => {
+  await downloadFile('/api/report.md', 'MiniFlows_实验报告.md');
+  toast('Markdown 报告已导出');
+});
+
+/* ======================================================================
+   图像绘制（高清、像素不模糊）
+   ====================================================================== */
+function drawGray(id, img, heat){
+  const {ctx, w, h} = fit($(id)), R = img.length, C = img[0].length; ctx.imageSmoothingEnabled = false;
+  const off = document.createElement('canvas'); off.width = C; off.height = R; const o = off.getContext('2d'), d = o.createImageData(C, R);
+  for(let r = 0; r < R; r++) for(let k = 0; k < C; k++){ const g = Math.round(Math.min(1, Math.max(0, img[r][k])) * 255), q = (r * C + k) * 4; d.data[q] = d.data[q + 1] = d.data[q + 2] = g; d.data[q + 3] = 255; }
+  o.putImageData(d, 0, 0); ctx.drawImage(off, 0, 0, w, h);
+  if(heat){ const gh = heat.length, gw = heat[0].length, cw = w / gw, ch = h / gh; for(let r = 0; r < gh; r++) for(let k = 0; k < gw; k++){ const v = heat[r][k]; ctx.fillStyle = `rgba(217,119,6,${(v * .72).toFixed(3)})`; ctx.fillRect(k * cw, r * ch, cw, ch); if(v > .55){ ctx.strokeStyle = 'rgba(245,158,11,.95)'; ctx.lineWidth = 1.2; ctx.strokeRect(k * cw + .5, r * ch + .5, cw - 1, ch - 1); } } }
+}
+
+/* MNIST 画板（带圆润笔触，支持触控；切到推理页后再初始化以免 0×0 画布） */
+const pad = $('mnist-pad'); let pctx = null, drawing = false, lastPt = null;
+function initPad(){ const {ctx, w, h} = fit(pad); pctx = ctx; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, w, h); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; }
+const pp = e => { const r = pad.getBoundingClientRect(); return [(e.clientX - r.left), (e.clientY - r.top)]; };
+pad.addEventListener('pointerdown', e => { if(!pctx) initPad(); drawing = true; pad.setPointerCapture(e.pointerId); lastPt = pp(e); stroke(lastPt, lastPt); });
+pad.addEventListener('pointermove', e => { if(!drawing) return; const p = pp(e); stroke(lastPt, p); lastPt = p; });
+['pointerup', 'pointercancel'].forEach(ev => pad.addEventListener(ev, () => drawing = false));
+function stroke(a, b){ if(!pctx) initPad(); pctx.strokeStyle = '#fff'; pctx.lineWidth = 17; pctx.shadowColor = 'rgba(255,255,255,.55)'; pctx.shadowBlur = 5; pctx.beginPath(); pctx.moveTo(a[0], a[1]); pctx.lineTo(b[0], b[1]); pctx.stroke(); pctx.shadowBlur = 0; }
+$('btn-clear').onclick = () => { initPad(); $('mnist-res').textContent = '—'; $('mnist-probs').innerHTML = ''; $('mnist-lat').textContent = ''; };
+function pad28(){ const t = document.createElement('canvas'); t.width = t.height = 28; const x = t.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(pad, 0, 0, 28, 28); const d = x.getImageData(0, 0, 28, 28).data, a = []; for(let r = 0; r < 28; r++){ const row = []; for(let c = 0; c < 28; c++) row.push(+(d[(r * 28 + c) * 4] / 255).toFixed(3)); a.push(row); } return a; }
+$('btn-mnist').onclick = () => busy($('btn-mnist'), async () => {
+  if(!lastSnap || lastSnap.task !== 'mnist') await loadPreset('mnist_lenet');
+  const img = pad28(), r = await api('/predict', {image:img});
+  $('mnist-res').textContent = r.label; $('mnist-lat').textContent = `推理耗时 ${r.latency_ms} ms`;
+  const top = r.probs.indexOf(Math.max(...r.probs)); $('mnist-probs').innerHTML = r.probs.map((p, i) => `<div class="bar ${i === top ? 'top' : ''}"><span style="width:14px" class="num">${i}</span><div class="tr"><i style="width:0" data-w="${(p * 100).toFixed(1)}"></i></div><span style="width:44px;text-align:right" class="num">${(p * 100).toFixed(1)}%</span></div>`).join('');
+  requestAnimationFrame(() => requestAnimationFrame(() => document.querySelectorAll('#mnist-probs i').forEach(i => i.style.width = i.dataset.w + '%')));
+  const hm = await api('/api/heatmap', {image:img, grid:8}); drawGray('cv-mnist-heat', img, hm.grid);
+});
+
+/* DonkeyCar 渲染与仪表盘 */
+['dc-off', 'dc-tilt'].forEach(id => $(id).addEventListener('input', e => $(id === 'dc-off' ? 'lb-off' : 'lb-tilt').textContent = e.target.value));
+function gauge(pred, gt){
+  const {ctx, w, h} = fit($('cv-gauge')), cx = w / 2, cy = h - 8, R = Math.min(w / 2 - 12, h - 18); ctx.lineCap = 'round';
+  ctx.strokeStyle = cssv('--line'); ctx.lineWidth = 9; ctx.beginPath(); ctx.arc(cx, cy, R, Math.PI, 0); ctx.stroke();
+  const ang = v => Math.PI * (1 + (v + 1) / 2);
+  ctx.strokeStyle = cssv('--ink'); ctx.beginPath(); ctx.arc(cx, cy, R, ang(0), ang(pred), pred < 0); ctx.stroke();
+  ctx.strokeStyle = cssv('--c2'); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx + Math.cos(ang(gt)) * (R - 14), cy + Math.sin(ang(gt)) * (R - 14)); ctx.lineTo(cx + Math.cos(ang(gt)) * (R + 8), cy + Math.sin(ang(gt)) * (R + 8)); ctx.stroke();
+}
+$('btn-dc').onclick = () => busy($('btn-dc'), async () => {
+  if(!lastSnap || lastSnap.task !== 'donkeycar') await loadPreset('donkeycar_resnet');
+  const r = await api('/api/donkeycar/render', {bottom:+$('dc-off').value, tilt:+$('dc-tilt').value, disturb:$('dc-dist').value});
+  drawGray('cv-dc-img', r.image); if(r.heatmap) drawGray('cv-dc-heat', r.image, r.heatmap);
+  if(r.pred_steer === null){ toast(r.note); $('dc-val').textContent = '—'; } else { $('dc-val').textContent = (r.pred_steer >= 0 ? '+' : '') + r.pred_steer.toFixed(3); $('dc-gt').textContent = `理论标签 ${r.true_steer.toFixed(3)} · ${r.latency_ms} ms`; }
+  gauge(r.pred_steer ?? 0, r.true_steer);
+});
+
+/* 闭环仿真：轨迹按时间"行驶"出来 */
+let simData = null, simT = 1, simRaf = 0;
+function drawSim(){
+  const c = $('cv-sim'), {ctx, w, h} = fit(c); if(!simData) return; const r = simData, pad = {l:40, r:16, t:14, b:26};
+  const all = [...r.closed.x, ...r.open_loop.x, ...r.closed.center_x], hw = r.road_half_w, lo = Math.min(...all) - hw - 4, hi = Math.max(...all) + hw + 4, zmax = Math.max(...r.closed.z, 400);
+  const X = z => pad.l + (w - pad.l - pad.r) * z / zmax, Y = x => pad.t + (h - pad.t - pad.b) * (1 - (x - lo) / (hi - lo));
+  ctx.font = FONT; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; niceTicks(lo, hi, 4).forEach(t => { if(t < lo || t > hi) return; ctx.strokeStyle = cssv('--line'); ctx.beginPath(); ctx.moveTo(pad.l, Math.round(Y(t)) + .5); ctx.lineTo(w - pad.r, Math.round(Y(t)) + .5); ctx.stroke(); ctx.fillStyle = cssv('--mute'); ctx.fillText(tickFmt(t), pad.l - 8, Y(t)); });
+  const cz = r.closed.z, cx = r.closed.center_x;
+  ctx.beginPath(); cz.forEach((z, i) => ctx.lineTo(X(z), Y(cx[i] + hw))); for(let i = cz.length - 1; i >= 0; i--) ctx.lineTo(X(cz[i]), Y(cx[i] - hw)); ctx.closePath(); ctx.fillStyle = cssv('--surface2'); ctx.fill();
+  ctx.strokeStyle = cssv('--line2'); ctx.setLineDash([5, 4]); ctx.lineWidth = 1.2; [hw, -hw].forEach(o => { ctx.beginPath(); cz.forEach((z, i) => i ? ctx.lineTo(X(z), Y(cx[i] + o)) : ctx.moveTo(X(z), Y(cx[i] + o))); ctx.stroke(); }); ctx.setLineDash([]);
+  const path = (obj, col, wd, dash) => { const n = Math.max(2, Math.floor(obj.z.length * simT)); ctx.strokeStyle = col; ctx.lineWidth = wd; ctx.setLineDash(dash ? [6, 4] : []); ctx.lineJoin = 'round'; ctx.beginPath(); for(let i = 0; i < n && i < obj.z.length; i++) i ? ctx.lineTo(X(obj.z[i]), Y(obj.x[i])) : ctx.moveTo(X(obj.z[i]), Y(obj.x[i])); ctx.stroke(); ctx.setLineDash([]); const k = Math.min(n, obj.z.length) - 1; ctx.beginPath(); ctx.arc(X(obj.z[k]), Y(obj.x[k]), 4.5, 0, 7); ctx.fillStyle = col; ctx.fill(); };
+  path(r.open_loop, cssv('--c3'), 2, true); path(r.closed, cssv('--c4'), 2.8, false);
+}
+function redrawSim(){ drawSim(); } new ResizeObserver(drawSim).observe($('cv-sim'));
+$('btn-sim').onclick = () => busy($('btn-sim'), async () => {
+  if(!lastSnap || lastSnap.task !== 'donkeycar') await loadPreset('donkeycar_resnet');
+  const r = await api('/api/donkeycar/sim', {amp:+$('sim-amp').value, wavelength:+$('sim-lam').value, noise_sigma:+$('sim-noise').value});
+  simData = r; $('em-sim').classList.add('hide'); legend($('lg-sim'), [{name:'模型闭环轨迹', color:cssv('--c4')}, {name:'不转向开环对照', color:cssv('--c3'), dash:true}]);
+  $('sim-res').textContent = `${r.arch} · 闭环最大偏差 ${r.closed.max_dev}px（${r.closed.success ? '成功过弯' : '出界'}） · 开环 ${r.open_loop.max_dev}px`;
+  cancelAnimationFrame(simRaf); const t0 = performance.now(); const step = now => { simT = ease(Math.min(1, (now - t0) / 1500)); drawSim(); if(simT < 1) simRaf = requestAnimationFrame(step); }; simRaf = requestAnimationFrame(step);
+});
+$('btn-vec').onclick = () => busy($('btn-vec'), async () => {
+  let feats;
+  try{ feats = JSON.parse($('vec-input').value); }
+  catch(e){ return toast('特征向量格式错误，请输入形如 [5.1, 3.5, 1.4, 0.2] 的 JSON 数组'); }
+  if(!Array.isArray(feats)) return toast('特征向量必须是 JSON 数组');
+  const r = await api('/predict', {features:feats});
+  $('vec-res').textContent = `${r.label}` + (r.probs ? ` · [${r.probs.map(p => p.toFixed(3)).join(', ')}]` : '') + ` · ${r.latency_ms} ms`;
+});
+
+/* 一键训练一个轻量鸢尾花模型，让 /predict 特征向量接口随时可用 */
+$('btn-vec-train').onclick = () => busy($('btn-vec-train'), async () => {
+  await api('/api/train/start', {
+    task: 'iris', arch: 'mlp', epochs: 40, samples: 150,
+    lr: 0.03, batch_size: 16, optimizer: 'adam', scale: 'standard',
+    early_stop: false, lr_schedule: false, seed: 42,
+  });
+  toast('鸢尾花模型训练已启动，完成后即可调用 /predict');
+});
+
+/* ======================================================================
+   11 项视觉扰动鲁棒性扫描
+   ====================================================================== */
+let robData = null;
+$('btn-rob').onclick = () => busy($('btn-rob'), async () => {
+  if(!lastSnap || lastSnap.task !== 'donkeycar') await loadPreset('donkeycar_resnet');
+  const r = await api('/api/donkeycar/robustness', {samples: 300});
+  robData = r;
+  $('em-rob').classList.add('hide');
+  const worst = r.worst || {};
+  $('rob-sub').textContent = `测试集 ${r.n_test} 样本 ｜ 干净 MAE ${r.clean_mae} ｜ 最差「${worst.kind}」MAE ${worst.mae}`;
+  const items = r.rows.map(x => ({
+    name: x.kind,
+    text: x.mae.toFixed(4),
+    color: x.key === 'clean' ? cssv('--c3') : (x.key === (worst.key || '') ? cssv('--c4') : cssv('--c2')),
+  }));
+  chRob.update({items}, [r.rows.map(x => x.mae)]);
+  $('rob-table').innerHTML = `<table class="tbl"><thead><tr><th>扰动</th><th>MAE</th><th>RMSE</th><th>P95</th><th>最大误差</th><th>相对干净劣化</th></tr></thead><tbody>${
+    r.rows.map((x, i) => `<tr style="animation:rise .4s var(--ease) ${i*28}ms both">
+      <td>${x.kind}${x.key === (worst.key || '') ? ' <span class="badge bad">最差</span>' : ''}</td>
+      <td class="num">${x.mae.toFixed(4)}</td>
+      <td class="num">${x.rmse.toFixed(4)}</td>
+      <td class="num">${x.p95_abs.toFixed(4)}</td>
+      <td class="num">${x.max_abs.toFixed(4)}</td>
+      <td class="num">${x.degrade_pct == null ? '—' : (x.degrade_pct > 0 ? '+' : '') + x.degrade_pct.toFixed(1) + '%'}</td>
+    </tr>`).join('')}</tbody></table>`;
+});
+
+/* ======================================================================
+   实验室
+   ====================================================================== */
+function seg(id, fn){ const el = $(id); el.querySelectorAll('button').forEach(b => b.onclick = () => { el.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); fn(b.dataset.v); }); }
+function loadGraph(v){ return busy(null, async () => {
+  $('graph-sk').style.display = 'block'; $('graph-img').style.display = 'none';
+  const r = await api('/api/lab/graph_viz', {preset:v}); $('graph-meta').textContent = `${r.n_nodes} 节点 · ${r.n_edges} 边`; $('graph-hint').textContent = r.title;
+  const img = $('graph-img'); img.onload = () => { $('graph-sk').style.display = 'none'; img.style.display = 'block'; }; img.src = r.image_b64;
+}); }
+seg('seg-graph', loadGraph);
+let anomData = null;
+/* 后端用 role 标注每条曲线的语义（good / bad / neutral），前端映射到主题色，
+   保证图例颜色与「哪条更好」一致，且明暗主题下都清晰 */
+const ROLE_COLOR = {good:'--c3', bad:'--c4', neutral:'--c2'};
+function redrawAnom(){
+  if(!anomData) return;
+  const sr = anomData.series.map(s => ({name:s.name, color:cssv(ROLE_COLOR[s.role] || '--c2'), dash:false}));
+  legend($('lg-anom'), sr);
+  chAnom.update({series:sr, labels:anomData.labels}, anomData.series.map(s => s.values));
+}
+function loadAnom(v){ return busy(null, async () => { anomData = await api('/api/lab/anomaly', {kind:v}); $('anom-title').textContent = anomData.title.length > 30 ? '' : anomData.title; $('em-anom').classList.add('hide'); redrawAnom(); }); }
+seg('seg-anom', loadAnom);
+$('btn-gc').onclick = () => busy($('btn-gc'), async () => {
+  const r = await api('/api/lab/grad_check', {}); $('gc-sum').textContent = `${r.passed}/${r.total} 项通过 · tol ${r.tol}`;
+  $('tbl-gc').querySelector('tbody').innerHTML = r.rows.map((x, i) => `<tr style="animation:rise .4s var(--ease) ${i * 25}ms both"><td>${x.name}</td><td><code>${x.shape}</code></td><td class="num">${x.max_rel}</td><td class="${x.passed ? 'ok' : 'bad'}">${x.passed ? '通过' : '失败'}</td></tr>`).join('');
+});
+$('btn-prep').onclick = () => busy($('btn-prep'), async () => {
+  const r = await api('/api/lab/preprocess', {}); $('prep-sum').textContent = `训练 ${r.n_train} · 测试 ${r.n_test}`;
+  $('tbl-prep').querySelector('tbody').innerHTML = r.rows.map((x, i) => `<tr style="animation:rise .4s var(--ease) ${i * 40}ms both"><td>${x.feature}</td><td class="num">${x.raw_mean} ± ${x.raw_std}</td><td class="num">${x.scaled_mean} ± ${x.scaled_std}</td><td class="num">${x.test_scaled_mean}</td></tr>`).join('');
+});
+
+/* ======================================================================
+   架构 3D 工作台：架构拆解 / 3D 参数 / 反向传播
+   ====================================================================== */
+let scene3d = null, sceneMode = 'arch', archData = null, backData = null;
+
+const KIND_COLOR = {
+  conv:'--c2', linear:'--c1', pool:'--c3', act:'--c4', norm:'--c5',
+  norm2:'--c5', flatten:'--c3', attn:'--c4', block:'--c1', embed:'--c2',
+  dropout:'--mute', seq:'--mute', model:'--c1', other:'--c3',
+};
+function kindColor(k){ return cssv(KIND_COLOR[k] || '--c3'); }
+
+async function setSceneMode(mode){
+  sceneMode = mode;
+  if(scene3d){ scene3d.dispose(); scene3d = null; }
+  $('m3d-overlay').innerHTML = '';
+  $('btn-3d-wave').style.display = mode === 'backward' ? '' : 'none';
+  $('sld-explode').parentElement.parentElement.style.display = mode === 'arch' ? '' : 'none';
+  if(!window.MF3D){ toast('3D 引擎未加载'); return; }
+  scene3d = MF3D.create(mode, $('cv-3d'), $('m3d-overlay'));
+  /* 3D 视图默认静止，便于稳定查看；需要时再手动开启自动旋转 */
+  scene3d.orbit.autoRotate = false;
+  bindSceneEvents();
+  await loadSceneData();
+}
+async function loadSceneData(){
+  if(!scene3d) return;
+  try{
+    if(sceneMode === 'weights'){
+      const d = await api('/api/architecture?weights=1&points=700');
+      scene3d.setData(d);
+      const shown = Math.min(12, d.weights.length);
+      $('arch-meta').textContent = `${d.params.toLocaleString()} 参数 · 展示 ${shown}/${d.weights.length} 个张量`;
+      legend($('lg-3d'), [
+        {name:'负权重', color:cssv('--c3')}, {name:'正权重', color:cssv('--c2')},
+        {name:'|值| 越大越亮', color:cssv('--ink')},
+      ]);
+    } else if(sceneMode === 'backward'){
+      const d = await api('/api/backward');
+      /* 反向图复用架构布局，按 block 聚合成梯度柱 */
+      try{ const a = await api('/api/architecture'); d.layout = a.layout; }catch(e){}
+      backData = d;
+      scene3d.setData(d);
+      $('arch-meta').textContent = `${d.n_nodes} 节点 · ${d.n_edges} 边 · loss ${d.loss.toFixed(5)}`;
+      legend($('lg-3d'), [
+        {name:'梯度小', color:cssv('--c3')}, {name:'梯度中', color:cssv('--c2')},
+        {name:'梯度大', color:cssv('--c4')},
+      ]);
+      renderBackLayers(d);
+    } else {
+      const d = await api('/api/architecture');
+      archData = d;
+      scene3d.setData(d);
+      $('arch-meta').textContent = `${d.params.toLocaleString()} 参数 · ${d.layers.length} 层`;
+      legend($('lg-3d'), Object.keys(KIND_COLOR).filter(k => k !== 'norm2').slice(0, 6)
+        .map(k => ({name:k, color:kindColor(k)})));
+      renderArchTable(d);
+    }
+  }catch(e){ toast(e.message); }
+}
+function renderArchTable(d){
+  const tb = $('tbl-arch').querySelector('tbody');
+  tb.innerHTML = d.layers.map((L, i) => `<tr data-lyr="${i}" style="cursor:pointer;animation:rise .35s var(--ease) ${Math.min(i,10)*22}ms both">
+      <td class="num">${i}</td>
+      <td><b>${L.name}</b></td>
+      <td><span class="badge" style="border-color:${kindColor(L.kind)};color:${kindColor(L.kind)}">${L.type}</span></td>
+      <td class="num" style="font-size:11px">${L.out ? '(' + L.out.join(',') + ')' : '—'}</td>
+      <td class="num">${L.params ? L.params.toLocaleString() : '—'}</td>
+    </tr>`).join('');
+  tb.querySelectorAll('[data-lyr]').forEach(tr => tr.onclick = () => {
+    const i = +tr.dataset.lyr;
+    if(scene3d && scene3d.select) scene3d.select(i);
+    showArchDetail(i);
+  });
+}
+function renderBackLayers(d){
+  const tb = $('tbl-arch').querySelector('tbody');
+  tb.innerHTML = d.layers.slice(0, 40).map((L, i) => `<tr style="animation:rise .35s var(--ease) ${Math.min(i,10)*22}ms both">
+      <td class="num">${i + 1}</td>
+      <td><b>${L.name}</b></td>
+      <td><span class="badge" style="border-color:${cssv('--c4')};color:${cssv('--c4')}">${L.count} 张量</span></td>
+      <td class="num">—</td>
+      <td class="num">${L.grad.toFixed(4)}</td>
+    </tr>`).join('');
+  $('arch-sub').textContent = `按梯度范数排序（前 40）`;
+}
+function showArchDetail(i){
+  const L = archData && archData.layers[i];
+  const box = $('arch-detail');
+  if(!L){ box.className = 'hint'; box.textContent = '点击 3D 场景中的层查看详情'; return; }
+  box.className = 'arch-detail';
+  box.innerHTML = `<dl>
+      <dt>层名</dt><dd>${L.name}</dd>
+      <dt>类型</dt><dd>${L.type}（${L.kind}）</dd>
+      <dt>输入</dt><dd>${L.in ? '(' + L.in.join(', ') + ')' : '—'}</dd>
+      <dt>输出</dt><dd>${L.out ? '(' + L.out.join(', ') + ')' : '—'}</dd>
+      <dt>参数量</dt><dd>${L.params ? L.params.toLocaleString() : '0'}</dd>
+    </dl><div class="d-desc">${L.desc || ''}</div>`;
+}
+function bindSceneEvents(){
+  const cv = $('cv-3d');
+  cv.onclick = e => {
+    if(!scene3d || !scene3d.pick) return;
+    const i = scene3d.pick(e.clientX, e.clientY);
+    if(i >= 0){ scene3d.select(i); showArchDetail(i); }
+  };
+  /* 悬停高亮对应卡片，并在右下角提示，不必先点击 */
+  cv.onmousemove = e => {
+    if(!scene3d || !scene3d.pick) return;
+    const i = scene3d.pick(e.clientX, e.clientY);
+    if(scene3d.hover) scene3d.hover(i);
+    cv.style.cursor = i >= 0 ? 'pointer' : 'grab';
+  };
+  cv.onmouseleave = () => {
+    if(scene3d && scene3d.hover) scene3d.hover(-1);
+    cv.style.cursor = 'grab';
+  };
+}
+seg('seg-3d', v => setSceneMode(v));
+$('btn-3d-reload').onclick = () => loadSceneData();
+$('btn-3d-frame').onclick = () => {
+  if(!scene3d) return;
+  if(scene3d.resetView) scene3d.resetView();
+  else scene3d.orbit.frame(scene3d.span ? scene3d.span * 0.85 : 22);
+};
+$('btn-3d-spin').onclick = () => { if(scene3d){ scene3d.orbit.autoRotate = !scene3d.orbit.autoRotate; toast(scene3d.orbit.autoRotate ? '已开启自动旋转' : '已关闭自动旋转'); } };
+$('btn-3d-wave').onclick = () => { if(scene3d && scene3d.playWave) scene3d.playWave(); };
+$('sld-explode').addEventListener('input', e => {
+  const v = +e.target.value; $('lb-explode').textContent = v + '%';
+  if(scene3d && scene3d.setExplode) scene3d.setExplode(v / 100);
+});
+
+/* ======================================================================
+   实时驾驶（多 Agent 同时闭环）+ 实时测试集评估
+   ====================================================================== */
+let driveData = null, driveRaf = 0, liveData = null;
+let drivePose = {}, driveSnaps = {}, driveFollow = 0, driveLastT = 0;
+let fleetLast = 0;
+const DRIVE_DELAY_MS = 70;
+const CAR_COLORS = ['--c4','--c1','--c2','--c3'];
+
+/* 道路中心线：与后端 harmonics 完全一致（随机弯道也能还原） */
+function roadCenter(r, z){
+  const hs = r && r.road && r.road.harmonics;
+  if(!hs || !hs.length){
+    const a = (r && r.amp) || 12, lam = (r && r.wavelength) || 300;
+    return a * Math.sin(2 * Math.PI * z / lam);
+  }
+  let x = 0;
+  for(let i = 0; i < hs.length; i++) x += hs[i][0] * Math.sin(2 * Math.PI * z / hs[i][1] + (hs[i][2] || 0));
+  return x;
+}
+
+let drive3d = null, drive3dRoadKey = '';
+
+function ensureDrive3D(){
+  if(drive3d) return drive3d;
+  if(!window.MF3D || !MF3D.createDrive){ toast('3D 引擎未加载'); return null; }
+  drive3d = MF3D.createDrive($('cv-drive'));
+  drive3d.setCameraMode($('sel-drive-camera') ? $('sel-drive-camera').value : 'chase');
+  drive3d.setFollow(driveFollow);
+  return drive3d;
+}
+
+function updateDriveHud(r){
+  if(!r || !r.cars || !r.cars.length) return;
+  const follow = r.cars.find(c2 => c2.id === driveFollow) || r.cars[0];
+  const policyTxt = r.policy === 'heuristic'
+    ? '几何控制器'
+    : ((r.arch || '模型') + ((r.policy_every || 1) > 1 ? ` ×${r.policy_every}` : ''));
+  const roadMode = (r.road && r.road.mode) === 'random' ? '随机弯道' : '正弦弯道';
+  const el = $('drive-hud');
+  if(!el) return;
+  el.textContent = `${r.fps} fps · ${policyTxt} · 推理 ${(r.infer_ms || 0).toFixed(1)}ms · ${roadMode} · 跟随 #${follow.id} · 偏差 ${follow.dev.toFixed(1)}px`
+    + (follow.alive ? '' : ' · 已出界');
+}
+
+/* 左上角小地图：俯视展示道路与车队位置 */
+function drawDriveMap(){
+  const c = $('cv-drive-map');
+  if(!c) return;
+  const {ctx, w, h} = fit(c);
+  if(!driveData) return;
+  const r = driveData, cars = r.cars || [];
+  if(!cars.length) return;
+  const follow = cars.find(c2 => c2.id === driveFollow) || cars[0];
+  const pose = drivePose[follow.id] || follow;
+  const half = r.road_half_w || 10;
+  const dark = document.documentElement.dataset.theme === 'dark';
+  const z0 = pose.z - 14, z1 = pose.z + 150, xsp = 48;
+  const mX = x => 8 + (w - 16) * ((x - (pose.x - xsp / 2)) / xsp);
+  const mY = z => h - 8 - (h - 16) * ((z - z0) / (z1 - z0));
+
+  ctx.fillStyle = dark ? 'rgba(18,20,24,.80)' : 'rgba(250,248,245,.88)';
+  roundRect(ctx, 0.5, 0.5, w - 1, h - 1, 8); ctx.fill();
+  ctx.strokeStyle = cssv('--line'); ctx.lineWidth = 1; ctx.stroke();
+
+  ctx.strokeStyle = cssv('--line2'); ctx.lineWidth = 3.5;
+  [half, -half].forEach(o => {
+    ctx.beginPath(); let first = true;
+    for(let z = z0; z <= z1; z += 3){
+      const x = mX(roadCenter(r, z) + o), y = mY(z);
+      first ? ctx.moveTo(x, y) : ctx.lineTo(x, y); first = false;
+    }
+    ctx.stroke();
+  });
+  ctx.strokeStyle = cssv('--c2'); ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+  ctx.beginPath(); let first = true;
+  for(let z = z0; z <= z1; z += 3){
+    const x = mX(roadCenter(r, z)), y = mY(z);
+    first ? ctx.moveTo(x, y) : ctx.lineTo(x, y); first = false;
+  }
+  ctx.stroke(); ctx.setLineDash([]);
+  cars.forEach((c2, i) => {
+    const p = drivePose[c2.id] || c2;
+    ctx.beginPath(); ctx.arc(mX(p.x), mY(p.z), c2.id === follow.id ? 3.6 : 2.6, 0, 7);
+    ctx.fillStyle = c2.alive ? cssv(CAR_COLORS[i % CAR_COLORS.length]) : cssv('--faint'); ctx.fill();
+  });
+  ctx.font = '10px "Inter",sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillStyle = cssv('--mute'); ctx.fillText('MAP', 8, 6);
+}
+if($('cv-drive-map')) new ResizeObserver(drawDriveMap).observe($('cv-drive-map'));
+
+/* 前端 60fps 渲染：对服务端快照做 70ms 延迟的线性插值，速度恒定 */
+function driveLoop(now){
+  if(!driveData){ driveRaf = 0; return; }
+  const rt = now - DRIVE_DELAY_MS;
+  for(const id in driveSnaps){
+    const arr = driveSnaps[id];
+    if(!arr || !arr.length) continue;
+    let s0 = arr[0], s1 = arr[0];
+    if(rt >= arr[arr.length - 1].t){
+      s0 = s1 = arr[arr.length - 1];
+    } else if(rt <= arr[0].t){
+      s0 = s1 = arr[0];
+    } else {
+      for(let i = 0; i < arr.length - 1; i++){
+        if(arr[i].t <= rt && arr[i + 1].t >= rt){ s0 = arr[i]; s1 = arr[i + 1]; break; }
+      }
+    }
+    const u = s1.t > s0.t ? Math.max(0, Math.min(1, (rt - s0.t) / (s1.t - s0.t))) : 0;
+    let p = drivePose[id];
+    if(!p){ p = drivePose[id] = {x:s0.x, z:s0.z, theta:s0.theta, alive:s0.alive, steer:s0.steer}; }
+    p.x = s0.x + (s1.x - s0.x) * u;
+    p.z = s0.z + (s1.z - s0.z) * u;
+    let dth = ((s1.theta - s0.theta + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
+    p.theta = s0.theta + dth * u;
+    p.alive = s1.alive; p.steer = s1.steer;
+  }
+  if(drive3d) drive3d.setState(driveData, drivePose);
+  drawDriveMap();
+  driveRaf = requestAnimationFrame(driveLoop);
+}
+
+function syncFollowOptions(cars){
+  const sel = $('sel-drive-follow');
+  if(sel.options.length !== cars.length){
+    sel.innerHTML = cars.map(c2 => `<option value="${c2.id}">Agent #${c2.id}</option>`).join('');
+    if(driveFollow >= cars.length) driveFollow = 0;
+    sel.value = String(driveFollow);
+  }
+}
+$('sel-drive-follow').onchange = e => {
+  driveFollow = +e.target.value;
+  if(drive3d){ drive3d.setFollow(driveFollow); drive3d.resetCamera(); }
+};
+$('sel-drive-camera').onchange = e => {
+  if(drive3d){ drive3d.setCameraMode(e.target.value); drive3d.resetCamera(); }
+};
+
+function renderFleet(r){
+  const box = $('drive-fleet');
+  box.innerHTML = (r.cars || []).map((c2, i) => {
+    const col = cssv(CAR_COLORS[i % CAR_COLORS.length]);
+    return `<div class="car ${c2.alive ? '' : 'out'}">
+      <div class="h"><i style="background:${col}"></i>Agent #${c2.id}</div>
+      <div class="v">${c2.dev.toFixed(1)} px</div>
+      <div class="s">${c2.alive ? `转向 ${c2.steer.toFixed(3)} ｜ 航向 ${c2.theta.toFixed(2)}` : '已出界'}</div>
+    </div>`;
+  }).join('');
+}
+
+$('sel-drive-model').onchange = () => {
+  const v = $('sel-drive-model').value;
+  /* 重模型自动切到隔步推理，轻模型/几何控制器默认每步 */
+  $('sel-drive-freq').value = (v === 'donkeycar_resnet' || v === 'donkeycar_vit') ? '2' : '1';
+};
+
+$('btn-drive-start').onclick = () => busy($('btn-drive-start'), async () => {
+  const preset = $('sel-drive-model').value;
+  const isHeuristic = preset === 'heuristic';
+  const presetLabel = {
+    donkeycar_resnet: 'ResNet-GN', donkeycar_cnn: 'CNN',
+    donkeycar_vit: 'ViT-Tiny', heuristic: '几何控制器',
+  }[preset] || preset;
+
+  if(!isHeuristic){
+    const loaded = await api('/api/model/load', {preset: preset});
+    render(await api('/api/snapshot'));
+    toast('已加载 ' + (loaded.model_info.tag || presetLabel));
+  }
+
+  drivePose = {}; driveSnaps = {}; driveFollow = 0; driveLastT = 0; driveData = null;
+  $('sel-drive-follow').innerHTML = '';
+  const r = await api('/api/drive/start', {
+    agents: +$('sel-drive-agents').value,
+    amp: numOf('drive-amp', 12), wavelength: numOf('drive-lam', 300),
+    noise_sigma: numOf('drive-noise', 0),
+    road_mode: $('drive-random').checked ? 'random' : 'sine',
+    road_seed: numOf('drive-seed', 2026),
+    policy: isHeuristic ? 'heuristic' : 'model',
+    policy_every: +$('sel-drive-freq').value,
+    interval: isHeuristic ? 0.02 : (preset === 'donkeycar_cnn' ? 0.03 : 0.05),
+  });
+  $('em-drive').classList.add('hide');
+  $('drive-hud').textContent = '车队启动中…';
+  const d3 = ensureDrive3D();
+  if(d3 && r.road){
+    drive3dRoadKey = JSON.stringify(r.road.harmonics || []);
+    d3.setRoad(r.road);
+    d3.setCameraMode($('sel-drive-camera').value);
+    d3.setFollow(0);
+    d3.resetCamera();
+  }
+  toast(`车队已启动：${presetLabel} · ${(r.policy === 'heuristic') ? '几何控制器' : `每 ${r.policy_every} 步推理`}`);
+});
+$('btn-drive-stop').onclick = () => busy(null, async () => { await api('/api/drive/stop', {}); toast('车队已停止'); });
+
+/* 实时测试集评估 */
+function drawLiveScatter(){
+  const c = $('cv-live-scatter'), {ctx, w, h} = fit(c);
+  if(!liveData || !liveData.last || !liveData.last.length) return;
+  const pad = {l:40, r:14, t:12, b:26};
+  const pts = liveData.last;
+  const lo = -1, hi = 1;
+  const X = v => pad.l + (w - pad.l - pad.r) * (v - lo) / (hi - lo);
+  const Y = v => pad.t + (h - pad.t - pad.b) * (1 - (v - lo) / (hi - lo));
+  ctx.font = FONT; ctx.textBaseline = 'middle'; ctx.textAlign = 'right';
+  [-1, -0.5, 0, 0.5, 1].forEach(t => {
+    ctx.strokeStyle = cssv('--line'); ctx.lineWidth = 1; ctx.beginPath();
+    ctx.moveTo(pad.l, Math.round(Y(t)) + .5); ctx.lineTo(w - pad.r, Math.round(Y(t)) + .5); ctx.stroke();
+    ctx.fillStyle = cssv('--mute'); ctx.fillText(t.toFixed(1), pad.l - 8, Y(t));
+  });
+  ctx.strokeStyle = cssv('--line2'); ctx.setLineDash([4, 4]); ctx.beginPath();
+  ctx.moveTo(pad.l, Y(0)); ctx.lineTo(w - pad.r, Y(0)); ctx.stroke(); ctx.setLineDash([]);
+  pts.forEach(p => {
+    ctx.beginPath(); ctx.arc(X(p.gt), Y(p.pred), 3.2, 0, 7);
+    ctx.fillStyle = cssv('--c2'); ctx.fill();
+  });
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = cssv('--mute');
+  ctx.fillText('真实转向角 →', w / 2, h - pad.b + 8);
+}
+new ResizeObserver(drawLiveScatter).observe($('cv-live-scatter'));
+
+$('btn-live-start').onclick = () => busy($('btn-live-start'), async () => {
+  if(!lastSnap || lastSnap.task !== 'donkeycar') await loadPreset('donkeycar_resnet');
+  await api('/api/live/eval', {samples: 300, seed: 2026, interval: 0.22});
+  $('em-live').classList.add('hide');
+  toast('实时评估已启动');
+});
+$('btn-live-stop').onclick = () => busy(null, async () => { await api('/api/live/stop', {}); toast('实时评估已停止'); });
+
+/* SSE 事件：实时评估与车队遥测 */
+es.addEventListener('live', ev => {
+  try{
+    const d = JSON.parse(ev.data);
+    liveData = d;
+    $('live-done').textContent = d.done || 0;
+    $('live-total').textContent = '/ ' + (d.total || '—') + ' 条';
+    $('live-mae').textContent = d.mae != null ? d.mae.toFixed(4) : '—';
+    $('live-rmse').textContent = 'RMSE ' + (d.rmse != null ? d.rmse.toFixed(4) : '—');
+    $('live-r2').textContent = d.r2 != null ? d.r2.toFixed(4) : '—';
+    $('live-tp').textContent = (d.throughput || 0) + ' /s';
+    $('live-sub').textContent = `已评估 ${d.done || 0}/${d.total || 0} ｜ 耗时 ${d.elapsed || 0}s`;
+    if(d.img) drawGray('cv-live-img', d.img);
+    drawLiveScatter();
+  }catch(e){}
+});
+es.addEventListener('drive', ev => {
+  try{
+    const d = JSON.parse(ev.data);
+    driveData = d;
+    if(d.cars && d.cars.length){
+      const nowT = performance.now();
+      const seen = {};
+      d.cars.forEach(c2 => {
+        seen[c2.id] = true;
+        const arr = driveSnaps[c2.id] || (driveSnaps[c2.id] = []);
+        arr.push({t: nowT, x: c2.x, z: c2.z, theta: c2.theta, alive: c2.alive, steer: c2.steer});
+        while(arr.length > 4) arr.shift();
+      });
+      for(const id in driveSnaps){ if(!seen[id]) delete driveSnaps[id]; }
+      syncFollowOptions(d.cars);
+    }
+    const d3 = ensureDrive3D();
+    if(d3 && d.road){
+      const rk = JSON.stringify(d.road.harmonics || []);
+      if(rk !== drive3dRoadKey){ drive3dRoadKey = rk; d3.setRoad(d.road); }
+      d3.setFollow(driveFollow);
+    }
+    $('em-drive').classList.add('hide');
+    /* 车队卡片和 HUD 不需要 30fps 重建，节流到约 5~6fps */
+    const now = performance.now();
+    if(d.state === 'stopped' || now - fleetLast > 180){
+      renderFleet(d);
+      updateDriveHud(d);
+      fleetLast = now;
+    }
+    if(!driveRaf){ driveLastT = 0; driveRaf = requestAnimationFrame(driveLoop); }
+  }catch(e){ console.error('drive SSE error', e); }
+});
+
+/* ======================================================================
+   对比总览与图片灯箱
+   ====================================================================== */
+let benchLoaded = false;
+let benchData = null;
+function renderBenchCharts(){
+  if(!benchData) return; const d = benchData, c1 = cssv('--c1'), c2 = cssv('--c2'), c3 = cssv('--c3');
+  const robOf = o => (o && o.robustness && (o.robustness.per_kind || o.robustness)) || {};
+  const clOf = o => (o && o.closed_loop && (o.closed_loop.summary || o.closed_loop)) || {};
+  if(d.resnet && d.cnn && d.vit){
+    const s3 = [{name:'ResNet-GN(主)', color:c1}, {name:'CNN', color:c2}, {name:'ViT-Tiny', color:c3}];
+    const ms = o => o.open_loop.mean_std || o.open_loop;
+    legend($('lg-b-arch'), s3);
+    chBArch.update({series:s3, labels:['开环 MAE', '误差 P95', '1 - R²']}, [
+      [ms(d.resnet).mae.mean, ms(d.resnet).p95_abs.mean, 1 - ms(d.resnet).r2.mean],
+      [ms(d.cnn).mae.mean, ms(d.cnn).p95_abs.mean, 1 - ms(d.cnn).r2.mean],
+      [ms(d.vit).mae.mean, ms(d.vit).p95_abs.mean, 1 - ms(d.vit).r2.mean],
+    ]);
+    const rRes = robOf(d.resnet), rCnn = robOf(d.cnn), rVit = robOf(d.vit);
+    const keys = Object.keys(rRes);
+    const shortRob = {'clean':'干净','噪声σ=0.02':'噪0.02','噪声σ=0.05':'噪0.05','噪声σ=0.10':'噪0.10','亮度-0.2':'亮-0.2','亮度+0.2':'亮+0.2','对比度×0.7':'对0.7','对比度×1.3':'对1.3','模糊3×3':'模糊','中心遮挡':'中遮','底部遮挡':'底遮'};
+    legend($('lg-b-rob'), s3);
+    chBRob.update({series:s3, labels:keys.map(k => shortRob[k] || k), threshold:0.1}, [
+      keys.map(k => (rRes[k] || {mean:0}).mean),
+      keys.map(k => (rCnn[k] || {mean:0}).mean),
+      keys.map(k => (rVit[k] || {mean:0}).mean),
+    ]);
+    const cRes = clOf(d.resnet), cCnn = clOf(d.cnn), cVit = clOf(d.vit);
+    const clK = [['in_dist', '同分布'], ['out_dist', '分布外'], ['noise_0.05', '噪声σ=0.05'], ['extreme', '极端弯道']];
+    legend($('lg-b-cl'), s3);
+    chBCl.update({series:s3, labels:clK.map(x => x[1]), threshold:10}, [
+      clK.map(x => (cRes[x[0]] || {max_dev_mean:0}).max_dev_mean),
+      clK.map(x => (cCnn[x[0]] || {max_dev_mean:0}).max_dev_mean),
+      clK.map(x => (cVit[x[0]] || {max_dev_mean:0}).max_dev_mean),
+    ]);
+  }
+  if(d.pytorch_resources && d.pytorch_resources.rows && d.pytorch_resources.rows.length >= 2){
+    const [mf, pt] = d.pytorch_resources.rows;
+    const sp = [{name:'MiniFlows', color:c1}, {name:'PyTorch', color:c2}];
+    legend($('lg-b-pt'), sp);
+    /* 秒 / 毫秒 / 准确率量纲不同 —— 每行独立标尺，数值直接标在条尾 */
+    const rows = [
+      {label:'1 轮训练耗时', values:[mf.train_s, pt.train_s],
+       texts:[`${mf.train_s.toFixed(2)} s`, `${pt.train_s.toFixed(2)} s`]},
+      {label:'单帧推理延迟', values:[mf.latency_ms, pt.latency_ms],
+       texts:[`${mf.latency_ms.toFixed(2)} ms`, `${pt.latency_ms.toFixed(2)} ms`]},
+      {label:'训练吞吐', values:[mf.samples_per_s, pt.samples_per_s],
+       texts:[`${Math.round(mf.samples_per_s)} /s`, `${Math.round(pt.samples_per_s)} /s`]},
+      {label:'测试准确率', values:[mf.test_acc, pt.test_acc],
+       texts:[`${(mf.test_acc*100).toFixed(1)}%`, `${(pt.test_acc*100).toFixed(1)}%`]},
+      {label:'RSS 内存增量', values:[mf.rss_delta_mb, pt.rss_delta_mb],
+       texts:[`${mf.rss_delta_mb.toFixed(0)} MB`, `${pt.rss_delta_mb.toFixed(0)} MB`]},
+    ];
+    chBPt.update({rows, series:sp}, rows.map(r => r.values));
+  }
+}
+async function loadBench(){
+  if(benchLoaded){ renderBenchCharts(); return; } benchLoaded = true;
+  const d = await api('/api/benchmarks'), rows = []; benchData = d;
+  const nn = (v, dg = 4) => (v == null || !isFinite(v)) ? '—' : (+v.toFixed(dg)).toString();
+  const msOf = o => (o.open_loop && (o.open_loop.mean_std || o.open_loop)) || {};
+  const robOfT = o => (o.robustness && (o.robustness.per_kind || o.robustness)) || {};
+  const clOfT = o => (o.closed_loop && (o.closed_loop.summary || o.closed_loop)) || {};
+  const latOf = o => (o.latency_ms != null) ? o.latency_ms : (o.latency && o.latency.mean_ms);
+  const parOf = o => o.params;
+  /* 最差扰动：从鲁棒性表里取 MAE 最高的一项（不再硬编码数字） */
+  const worstOf = o => {
+    const r = robOfT(o); let k = '—', v = null;
+    Object.keys(r).forEach(key => {
+      if(key === 'clean') return;
+      const mv = r[key] && r[key].mean != null ? r[key].mean : null;
+      if(mv != null && (v == null || mv > v)){ v = mv; k = key; }
+    });
+    return {kind:k, mean:v};
+  };
+  const mk = (n, o, role) => {
+    const ms = msOf(o), w = worstOf(o), inDist = (clOfT(o).in_dist) || {};
+    return `<td><b>${n}</b></td>`
+      + `<td class="num">${parOf(o) != null ? parOf(o).toLocaleString() : '—'}</td>`
+      + `<td class="num">${nn(ms.mae && ms.mae.mean)} ± ${nn(ms.mae && ms.mae.std)}</td>`
+      + `<td class="num">${nn(ms.r2 && ms.r2.mean, 3)}</td>`
+      + `<td class="num">${w.kind}：${nn(w.mean)}</td>`
+      + `<td class="num">${nn(inDist.max_dev_mean, 2)} px</td>`
+      + `<td class="num">${latOf(o) != null ? nn(latOf(o), 2) + ' ms' : '—'}</td>`
+      + `<td>${role}</td>`;
+  };
+  if(d.cnn) rows.push(mk('LeNet 风格 CNN', d.cnn, '基准对照'));
+  if(d.vit) rows.push(mk('ViT-Tiny', d.vit, '序列架构对照'));
+  if(d.resnet) rows.push(mk('ResNet-GN', d.resnet, '<span class="tag">选定主模型</span>'));
+  $('tbl-arch').querySelector('tbody').innerHTML = rows.length
+    ? rows.map((r, i) => `<tr style="animation:rise .4s var(--ease) ${i * 60}ms both">${r}</tr>`).join('')
+    : '<tr class="empty-row"><td colspan="8">未找到 outputs/ 下的评测结果 JSON</td></tr>';
+  if(d.pytorch_resources && d.pytorch_resources.rows) $('tbl-pt').querySelector('tbody').innerHTML = d.pytorch_resources.rows.map((r, i) => `<tr style="animation:rise .4s var(--ease) ${i * 60}ms both"><td><b>${r.name}</b></td><td>${r.dtype}</td><td class="num">${r.params.toLocaleString()}</td><td class="num">${(r.flops / 1e6).toFixed(2)} M</td><td class="num">${r.train_s.toFixed(2)} s</td><td class="num">${Math.round(r.samples_per_s)} /s</td><td class="num">${r.latency_ms.toFixed(2)} ms</td><td class="num">${r.rss_delta_mb.toFixed(0)} MB</td></tr>`).join('');
+  renderBenchCharts();
+}
+document.addEventListener('click', e => { const im = e.target.closest('.gallery img, .lab-img'); if(im && im.src){ $('lb-img').src = im.src; $('lb').classList.add('on'); } else if(e.target.closest('#lb')) $('lb').classList.remove('on'); });
+
+go((location.hash || '#train').slice(1));
+</script>
+</body>
+</html>

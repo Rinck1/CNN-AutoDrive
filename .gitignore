@@ -30,3 +30,17 @@ GFG 扰动/
 
 # ---- 快速自检产物（不作为正式结果提交） ----
 outputs/**/*_quick.*
+
+# ---- 本地构建产物 / 运行时状态（不入库） ----
+build/
+.commandcode/
+outputs/**/runs.json
+outputs/**/*.log
+outputs/scale_best/
+
+# ---- 课程材料与本地大文件（不入库） ----
+__MACOSX/
+*.pptx
+*.docx
+附件1-*.zip
+附件1-*/

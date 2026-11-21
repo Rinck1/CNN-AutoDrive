@@ -1,0 +1,32 @@
+{
+  "args": {
+    "samples": 3000,
+    "epochs": 1,
+    "batch_size": 64,
+    "lr": 0.001
+  },
+  "rows": [
+    {
+      "name": "MiniFlows (numpy, float64)",
+      "params": 44426,
+      "flops": 572444,
+      "latency_ms": 0.9556900011375546,
+      "train_s": 2.2713939999812283,
+      "rss_delta_mb": 470.9296875,
+      "samples_per_s": 1320.774819350933,
+      "test_acc": 0.718,
+      "dtype": "float64"
+    },
+    {
+      "name": "PyTorch (CPU, float32)",
+      "params": 44426,
+      "flops": 572444,
+      "latency_ms": 0.4605350040947087,
+      "train_s": 0.8681464999972377,
+      "rss_delta_mb": 27.6875,
+      "samples_per_s": 3455.637959733231,
+      "test_acc": 0.725,
+      "dtype": "float32"
+    }
+  ]
+}

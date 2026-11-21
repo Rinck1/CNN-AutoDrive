@@ -85,7 +85,7 @@ def test_default_resnet():
     np.random.seed(1)
     m = build_resnet()
     n = sum(p.data.size for p in m.params())
-    print(f'    参数量={n:,}（CNN 44,426 / ViT 44,353）')
+    print(f'    参数量={n:,}（CNN 38,369 / ViT 44,353）')
     X = np.random.randn(3, 1, 64, 64)
     m.train_mode(False)
     p0 = m(Node(X)).data.copy()

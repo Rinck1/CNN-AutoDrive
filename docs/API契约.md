@@ -343,7 +343,7 @@ class ViTRegressor(Layer):
 
 def build_vit(img_size=64, patch_size=8, dim=48, depth=2,
               heads=4, mlp_ratio=2, in_channels=1) -> ViTRegressor
-    # DonkeyCar 默认配置：44,353 参数（与 CNN 44,426 基本对齐）
+    # DonkeyCar 默认配置：44,353 参数（与 CNN 38,369 同量级）
 ```
 
 **broadcast_add 对齐规则补充**：`(F,)` 偏置对 4D 卷积特征图按通道维
@@ -371,7 +371,7 @@ class ResNetRegressor(Layer):
 
 def build_resnet(in_channels=1, c0=8, widths=(8,16,32),
                  blocks=(2,2,2), num_groups=None) -> ResNetRegressor
-    # 默认 44,337 参数（CNN 44,426 / ViT 44,353）
+    # 默认 44,337 参数（CNN 38,369 / ViT 44,353）
 ```
 
 **设计说明**：用 GroupNorm 替代 BatchNorm，因为当前 `save_model` 只保存
