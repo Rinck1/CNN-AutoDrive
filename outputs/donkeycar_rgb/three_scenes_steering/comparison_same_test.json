@@ -1,0 +1,132 @@
+{
+  "test_images": 4249,
+  "test_episodes": 6,
+  "source": "the RGB run's held-out test episodes",
+  "straight_line_baseline": {
+    "images": 4249,
+    "mae": 0.1818887254232913,
+    "rmse": 0.24172337032964727,
+    "p95_absolute_error": 0.4754387820355804,
+    "turn_direction_accuracy_for_abs_label_ge_0_10": 0.0
+  },
+  "models": {
+    "original_default": {
+      "weights": "C:\\Users\\zkw34\\Downloads\\\u7efc\u8bbe\\\u672c\u7ec4\\CNN-AutoDrive\\outputs\\donkeycar\\donkeycar_model.npz",
+      "parameters": 38369,
+      "input_chw": [
+        1,
+        64,
+        64
+      ],
+      "whole_test_set": {
+        "images": 4249,
+        "mae": 0.22720312291690095,
+        "rmse": 0.28237272147126025,
+        "p95_absolute_error": 0.5397410121815188,
+        "turn_direction_accuracy_for_abs_label_ge_0_10": 0.43728813559322033
+      },
+      "by_scene": {
+        "generated_road": {
+          "images": 1686,
+          "mae": 0.22266133751969033,
+          "rmse": 0.26486959487502976,
+          "p95_absolute_error": 0.4608370748838333,
+          "turn_direction_accuracy_for_abs_label_ge_0_10": 0.4791318864774624
+        },
+        "mini_monaco": {
+          "images": 1686,
+          "mae": 0.25269691741118727,
+          "rmse": 0.31485140379469084,
+          "p95_absolute_error": 0.6447713332246829,
+          "turn_direction_accuracy_for_abs_label_ge_0_10": 0.18833162743091095
+        },
+        "warehouse": {
+          "images": 877,
+          "mae": 0.1869236618705276,
+          "rmse": 0.24669506901900068,
+          "p95_absolute_error": 0.568529761383142,
+          "turn_direction_accuracy_for_abs_label_ge_0_10": 0.8395833333333333
+        }
+      }
+    },
+    "original_eval_checkpoint": {
+      "weights": "C:\\Users\\zkw34\\Downloads\\\u7efc\u8bbe\\\u672c\u7ec4\\CNN-AutoDrive\\outputs\\donkeycar\\donkeycar_eval_model.npz",
+      "parameters": 38369,
+      "input_chw": [
+        1,
+        64,
+        64
+      ],
+      "whole_test_set": {
+        "images": 4249,
+        "mae": 0.27912833487028327,
+        "rmse": 0.35057589588560967,
+        "p95_absolute_error": 0.6826960941447378,
+        "turn_direction_accuracy_for_abs_label_ge_0_10": 0.38267419962335214
+      },
+      "by_scene": {
+        "generated_road": {
+          "images": 1686,
+          "mae": 0.22594109010333807,
+          "rmse": 0.2806309631675896,
+          "p95_absolute_error": 0.530376690679147,
+          "turn_direction_accuracy_for_abs_label_ge_0_10": 0.5208681135225376
+        },
+        "mini_monaco": {
+          "images": 1686,
+          "mae": 0.3184003601717313,
+          "rmse": 0.37986446533139995,
+          "p95_absolute_error": 0.6926474399583192,
+          "turn_direction_accuracy_for_abs_label_ge_0_10": 0.30501535312180145
+        },
+        "warehouse": {
+          "images": 877,
+          "mae": 0.30587982862037255,
+          "rmse": 0.40822952923008177,
+          "p95_absolute_error": 0.7994897913746538,
+          "turn_direction_accuracy_for_abs_label_ge_0_10": 0.19583333333333333
+        }
+      }
+    },
+    "new_rgb": {
+      "weights": "C:\\Users\\zkw34\\Downloads\\\u7efc\u8bbe\\\u672c\u7ec4\\CNN-AutoDrive\\outputs\\donkeycar_rgb\\three_scenes_steering\\steering_model.npz",
+      "parameters": 43933,
+      "input_chw": [
+        3,
+        40,
+        64
+      ],
+      "whole_test_set": {
+        "images": 4249,
+        "mae": 0.017828677844750365,
+        "rmse": 0.035777005505098,
+        "p95_absolute_error": 0.056715925175784956,
+        "turn_direction_accuracy_for_abs_label_ge_0_10": 0.9977401129943503
+      },
+      "by_scene": {
+        "generated_road": {
+          "images": 1686,
+          "mae": 0.019465500667504083,
+          "rmse": 0.03953304684480282,
+          "p95_absolute_error": 0.05586294848035607,
+          "turn_direction_accuracy_for_abs_label_ge_0_10": 1.0
+        },
+        "mini_monaco": {
+          "images": 1686,
+          "mae": 0.015500873210773838,
+          "rmse": 0.02539637958469353,
+          "p95_absolute_error": 0.050654642432232694,
+          "turn_direction_accuracy_for_abs_label_ge_0_10": 0.9938587512794268
+        },
+        "warehouse": {
+          "images": 877,
+          "mae": 0.019157064770316666,
+          "rmse": 0.044237881212428345,
+          "p95_absolute_error": 0.07295745268691774,
+          "turn_direction_accuracy_for_abs_label_ge_0_10": 1.0
+        }
+      }
+    }
+  },
+  "mae_reduction_vs_original_default": 0.921529785260605
+}
