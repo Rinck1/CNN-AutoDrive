@@ -1,0 +1,56 @@
+[
+  {
+    "scene": "generated_road",
+    "weights": "C:\\Users\\zkw34\\Downloads\\综设\\本组\\CNN-AutoDrive\\outputs\\donkeycar_rgb\\three_scenes_steering\\steering_model.npz",
+    "input_shape": [
+      3,
+      40,
+      64
+    ],
+    "steps": 400,
+    "max_steps": 400,
+    "throttle": 0.1,
+    "max_abs_cte": 0.342,
+    "travel": 19.15,
+    "hit": "none",
+    "elapsed_s": 29.54,
+    "fps": 13.5,
+    "reason": "steps_limit"
+  },
+  {
+    "scene": "mini_monaco",
+    "weights": "C:\\Users\\zkw34\\Downloads\\综设\\本组\\CNN-AutoDrive\\outputs\\donkeycar_rgb\\three_scenes_steering\\steering_model.npz",
+    "input_shape": [
+      3,
+      40,
+      64
+    ],
+    "steps": 400,
+    "max_steps": 400,
+    "throttle": 0.1,
+    "max_abs_cte": 1.9271,
+    "travel": 18.88,
+    "hit": "none",
+    "elapsed_s": 24.53,
+    "fps": 16.3,
+    "reason": "steps_limit"
+  },
+  {
+    "scene": "warehouse",
+    "weights": "C:\\Users\\zkw34\\Downloads\\综设\\本组\\CNN-AutoDrive\\outputs\\donkeycar_rgb\\three_scenes_steering\\steering_model.npz",
+    "input_shape": [
+      3,
+      40,
+      64
+    ],
+    "steps": 400,
+    "max_steps": 400,
+    "throttle": 0.1,
+    "max_abs_cte": 1.4687,
+    "travel": 18.9,
+    "hit": "none",
+    "elapsed_s": 23.39,
+    "fps": 17.1,
+    "reason": "steps_limit"
+  }
+]

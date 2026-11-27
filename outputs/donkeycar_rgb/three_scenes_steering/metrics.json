@@ -1,0 +1,98 @@
+{
+  "manifest": "C:\\Users\\zkw34\\Downloads\\\u7efc\u8bbe\\\u672c\u7ec4\\CNN-AutoDrive\\data\\donkeysim_rgb\\three_scenes_10000\\samples.csv",
+  "model": "steering_model.npz",
+  "framework": "MiniFlows",
+  "device": "cpu",
+  "input": {
+    "channels": "RGB",
+    "shape_chw": [
+      3,
+      40,
+      64
+    ],
+    "crop_top_fraction": 0.16666666666666666,
+    "pixel_transform": "pixel / 255 - 0.5"
+  },
+  "target": "steering",
+  "steering_mean": {
+    "dataset": 0.049979569042036445,
+    "train": -8.285729529008224e-18
+  },
+  "parameters": 43933,
+  "seed": 42,
+  "batch_size": 64,
+  "epochs": 8,
+  "best_epoch_by_validation_mse": 8,
+  "training_seconds": 288.27,
+  "splits": {
+    "train": {
+      "images": 21502,
+      "episodes": 27
+    },
+    "validation": {
+      "images": 4249,
+      "episodes": 6
+    },
+    "test": {
+      "images": 4249,
+      "episodes": 6
+    },
+    "extra_train": {
+      "images": 12800,
+      "sources": {
+        "C:\\Users\\zkw34\\Downloads\\\u7efc\u8bbe\\\u672c\u7ec4\\CNN-AutoDrive\\data\\donkeysim_rgb\\recovery_dagger_v1\\samples.csv": 2400,
+        "C:\\Users\\zkw34\\Downloads\\\u7efc\u8bbe\\\u672c\u7ec4\\CNN-AutoDrive\\data\\donkeysim_rgb\\recovery_generated_road\\samples.csv": 2000,
+        "C:\\Users\\zkw34\\Downloads\\\u7efc\u8bbe\\\u672c\u7ec4\\CNN-AutoDrive\\data\\donkeysim_rgb\\recovery_warehouse\\samples.csv": 2000
+      },
+      "repeat": 2
+    }
+  },
+  "validation": {
+    "mae": 0.013782454253106093,
+    "rmse": 0.020747719512640542,
+    "p95_absolute_error": 0.04205426658608629,
+    "zero_steering_baseline_mae": 0.1481261982012904,
+    "train_mean_baseline_mae": 0.1481261982012904,
+    "turn_direction_accuracy_for_abs_label_ge_0.10": 1.0
+  },
+  "test": {
+    "mae": 0.016156230051268112,
+    "rmse": 0.028893958171380026,
+    "p95_absolute_error": 0.04741118762608531,
+    "zero_steering_baseline_mae": 0.1818887254232913,
+    "train_mean_baseline_mae": 0.1818887254232913,
+    "turn_direction_accuracy_for_abs_label_ge_0.10": 1.0
+  },
+  "history": {
+    "training_mse": [
+      0.026351023368231093,
+      0.0033746511243873283,
+      0.0018445533154667997,
+      0.0013763846023620067,
+      0.0012149275310358485,
+      0.001014085440133156,
+      0.0005168390603823057,
+      0.0004808339150228429
+    ],
+    "validation_mse": [
+      0.002897724156954943,
+      0.001512212295421016,
+      0.001033155207759243,
+      0.0008412511459260634,
+      0.0009355442293311662,
+      0.000527132255658237,
+      0.0004716337854154398,
+      0.000430467864975205
+    ],
+    "learning_rate": [
+      0.001,
+      0.001,
+      0.001,
+      0.001,
+      0.001,
+      0.001,
+      0.0004,
+      0.0004
+    ]
+  }
+}

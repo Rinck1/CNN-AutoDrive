@@ -113,6 +113,16 @@ from applications.donkeycar_eval import (
 from applications.inspector import (
     trace_architecture, trace_backward, layer_layout, weight_pointcloud,
 )
+from applications.donkeysim_rgb_runner import (
+    DEFAULT_WEIGHTS as DSIM_RGB_WEIGHTS,
+    DEFAULT_SCENES as DSIM_DEFAULT_SCENES,
+    RGB_HEIGHT as DSIM_RGB_H,
+    RGB_WIDTH as DSIM_RGB_W,
+    build_rgb_model,
+    load_rgb_steering_model,
+    probe_donkeysim,
+    run_closed_loop as run_donkeysim_closed_loop,
+)
 
 DATA_DIR = os.path.join(_ROOT, 'data')
 if _FROZEN:
@@ -260,10 +270,13 @@ class MiniFlowsStudio:
         self._stop_train = threading.Event()
         self._stop_live = threading.Event()
         self._stop_drive = threading.Event()
+        self._stop_dsim = threading.Event()
         self._live = None            # 实时测试集评估状态
         self._drive = None           # 8 agent 实时驾驶状态
+        self._dsim = None            # 本机 DonkeySim RGB 实景闭环状态
         self._live_thread = None
         self._drive_thread = None
+        self._dsim_thread = None
 
         # 当前激活模型与元信息
         self.status = 'idle'  # idle | training | completed | stopped | error
@@ -471,6 +484,9 @@ class MiniFlowsStudio:
             else:
                 m = build_resnet(in_channels=1)
             return m, MSELoss(), (1, DC_IMG_SIZE, DC_IMG_SIZE), False, 'regression', None
+        if task == 'donkeycar_rgb':
+            m = build_rgb_model()
+            return m, MSELoss(), (3, DSIM_RGB_H, DSIM_RGB_W), False, 'regression', None
         raise ValueError(f'未知任务: {task}')
 
     def _build_task_components(self, cfg):
@@ -891,6 +907,7 @@ class MiniFlowsStudio:
         self._stop_train.set()
         self._stop_live.set()
         self._stop_drive.set()
+        self._stop_dsim.set()
         self._stop_server.set()
         if self._server is not None:
             try:
@@ -953,6 +970,9 @@ class MiniFlowsStudio:
             elif preset == 'donkeycar_vit':
                 npz_path = os.path.join(OUTPUTS_DIR, 'donkeycar_vit', 'donkeycar_vit_model.npz')
                 task, arch, need_up = 'donkeycar', 'vit', False
+            elif preset == 'donkeycar_rgb':
+                npz_path = os.path.join(OUTPUTS_DIR, 'donkeycar_rgb', 'three_scenes_steering', 'steering_model.npz')
+                task, arch, need_up = 'donkeycar_rgb', 'rgb_cnn', False
             elif preset == 'mnist_lenet':
                 npz_path = os.path.join(OUTPUTS_DIR, 'web', 'mnist_lenet.npz')
                 task, arch, need_up = 'mnist', 'lenet', False
@@ -1597,6 +1617,137 @@ class MiniFlowsStudio:
         return {'ok': True}
 
     # ------------------------------------------------------------------
+    # 本机 DonkeySim 实景 RGB 闭环（后台线程 + SSE 推送）
+    # ------------------------------------------------------------------
+    def probe_donkeysim_sim(self, host='127.0.0.1', port=9091):
+        """探测本机 DonkeySim 9091 端口并返回可选场景列表。"""
+        host = str(host or '127.0.0.1').strip() or '127.0.0.1'
+        port = int(port or 9091)
+        res = probe_donkeysim(host=host, port=port)
+        res['weights_exists'] = os.path.isfile(str(DSIM_RGB_WEIGHTS))
+        res['weights_path'] = os.path.relpath(str(DSIM_RGB_WEIGHTS), _ROOT)
+        return res
+
+    def donkeysim_status(self):
+        with self._lock:
+            st = dict(self._dsim) if self._dsim else {
+                'state': 'idle',
+                'scene': DSIM_DEFAULT_SCENES[0],
+                'step': 0,
+                'max_steps': 600,
+                'reason': '',
+            }
+        st['weights_exists'] = os.path.isfile(str(DSIM_RGB_WEIGHTS))
+        return st
+
+    def start_donkeysim(self, host='127.0.0.1', port=9091, scene='generated_road',
+                        throttle=0.10, max_steps=600, max_cte=0.0):
+        """启动后台线程：连接本机 DonkeySim，使用新训练的 RGB 模型跑真实闭环。"""
+        host = str(host or '127.0.0.1').strip() or '127.0.0.1'
+        port = max(1, min(int(port or 9091), 65535))
+        scene = str(scene or 'generated_road').strip() or 'generated_road'
+        throttle = float(throttle if throttle is not None else 0.10)
+        if not 0.0 < throttle <= 1.0:
+            raise ValueError('油门 throttle 必须在 (0, 1] 之间')
+        max_steps = max(10, min(int(max_steps or 600), 10000))
+        max_cte = max(0.0, float(max_cte or 0.0))
+
+        # 提前加载并校验 RGB 模型，权重缺失或损坏时立刻返回可读错误
+        model, weights_path = load_rgb_steering_model(DSIM_RGB_WEIGHTS)
+
+        with self._lock:
+            self._stop_dsim.set()
+        if getattr(self, '_dsim_thread', None) and self._dsim_thread.is_alive():
+            self._dsim_thread.join(timeout=2.0)
+
+        with self._lock:
+            self._stop_dsim.clear()
+            self._dsim = {
+                'state': 'connecting',
+                'host': host,
+                'port': port,
+                'scene': scene,
+                'step': 0,
+                'max_steps': max_steps,
+                'throttle': round(throttle, 3),
+                'steering': 0.0,
+                'speed': 0.0,
+                'cte': 0.0,
+                'max_abs_cte': 0.0,
+                'pos_x': 0.0,
+                'pos_z': 0.0,
+                'yaw': 0.0,
+                'hit': 'none',
+                'travel': 0.0,
+                'infer_ms': 0.0,
+                'fps': 0.0,
+                'elapsed_s': 0.0,
+                'reason': '',
+                'error': '',
+                'weights': os.path.basename(str(weights_path)),
+            }
+        self._broadcast_event('donkeysim', dict(self._dsim))
+        self._log(f'正在连接本机 DonkeySim（{host}:{port}），场景={scene}，油门={throttle}...')
+
+        def on_step(payload):
+            with self._lock:
+                st = self._dsim or {}
+                st.update(payload)
+                self._dsim = st
+            self._broadcast_event('donkeysim', dict(payload))
+
+        def worker():
+            try:
+                summary = run_donkeysim_closed_loop(
+                    host=host,
+                    port=port,
+                    scene=scene,
+                    weights=weights_path,
+                    model=model,
+                    throttle=throttle,
+                    max_steps=max_steps,
+                    max_cte=max_cte,
+                    stop_event=self._stop_dsim,
+                    on_step=on_step,
+                    frame_every=1,
+                )
+                final_state = 'stopped' if summary.get('reason') == 'stopped' else 'completed'
+                with self._lock:
+                    st = dict(self._dsim or {})
+                    st.update({
+                        'state': final_state,
+                        'step': summary['steps'],
+                        'max_abs_cte': summary['max_abs_cte'],
+                        'travel': summary['travel'],
+                        'hit': summary['hit'],
+                        'elapsed_s': summary['elapsed_s'],
+                        'fps': summary['fps'],
+                        'reason': summary['reason'],
+                        'error': '',
+                    })
+                    self._dsim = st
+                self._log(
+                    f'DonkeySim 实景闭环结束（{scene}）：步数 {summary["steps"]}/{max_steps}，'
+                    f'最大 |CTE|={summary["max_abs_cte"]}，行驶 {summary["travel"]}m，原因={summary["reason"]}'
+                )
+                self._broadcast_event('donkeysim', dict(st))
+            except Exception as exc:
+                with self._lock:
+                    st = dict(self._dsim or {})
+                    st.update({'state': 'error', 'error': str(exc), 'reason': 'error'})
+                    self._dsim = st
+                self._log(f'DonkeySim 实景闭环异常：{exc}')
+                self._broadcast_event('donkeysim', dict(st))
+
+        self._dsim_thread = threading.Thread(target=worker, daemon=True)
+        self._dsim_thread.start()
+        return {'ok': True, 'host': host, 'port': port, 'scene': scene, 'max_steps': max_steps}
+
+    def stop_donkeysim(self):
+        self._stop_dsim.set()
+        return {'ok': True}
+
+    # ------------------------------------------------------------------
     # 实验报告导出（Markdown + 图表 PNG + ZIP 打包）
     # ------------------------------------------------------------------
     def _report_charts(self):
@@ -2157,6 +2308,13 @@ def start_server(host='127.0.0.1', port=8000, block=True):
                 return self._send_asset(p[len('/assets/'):])
             if p == '/api/runs':
                 return self._send_json({'runs': studio.list_runs()})
+            if p == '/api/donkeysim/scenes':
+                q = parse_qs(parsed.query)
+                host = q.get('host', ['127.0.0.1'])[0]
+                port = int(q.get('port', ['9091'])[0])
+                return self._send_json(studio.probe_donkeysim_sim(host=host, port=port))
+            if p == '/api/donkeysim/status':
+                return self._send_json(studio.donkeysim_status())
             if p == '/api/architecture':
                 q = parse_qs(parsed.query)
                 with_weights = q.get('weights', ['0'])[0] in ('1', 'true', 'True')
@@ -2259,6 +2417,17 @@ def start_server(host='127.0.0.1', port=8000, block=True):
                     ))
                 if p == '/api/drive/stop':
                     return self._send_json(studio.stop_drive())
+                if p == '/api/donkeysim/start':
+                    return self._send_json(studio.start_donkeysim(
+                        host=body.get('host', '127.0.0.1'),
+                        port=body.get('port', 9091),
+                        scene=body.get('scene', 'generated_road'),
+                        throttle=body.get('throttle', 0.10),
+                        max_steps=body.get('max_steps', 600),
+                        max_cte=body.get('max_cte', 0.0),
+                    ))
+                if p == '/api/donkeysim/stop':
+                    return self._send_json(studio.stop_donkeysim())
                 if p == '/api/lab/grad_check':
                     return self._send_json(run_lab_grad_check())
                 if p == '/api/lab/graph_viz':

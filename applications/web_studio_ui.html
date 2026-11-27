@@ -244,6 +244,16 @@ kbd{font:inherit;border:1px solid var(--line);border-radius:4px;padding:0 5px;ba
 .drive-hud{position:absolute;left:14px;top:12px;max-width:calc(100% - 196px);font:11px/1.5 "Inter",-apple-system,"Microsoft YaHei",sans-serif;color:var(--ink2);background:color-mix(in srgb,var(--surface) 78%,transparent);border:1px solid var(--line);border-radius:8px;padding:6px 10px;backdrop-filter:blur(8px);pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:2}
 .side-model-select{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:12px;color:var(--ink);cursor:pointer;transition:border-color .2s}
 .side-model-select:focus{outline:none;border-color:var(--line2)}
+/* ---------- DonkeySim 实景 RGB 闭环 ---------- */
+.dsim-cam-wrap{position:relative;border-radius:10px;border:1px solid var(--line2);background:#09090b;overflow:hidden;aspect-ratio:4/3;display:grid;place-items:center}
+.dsim-cam-wrap img{width:100%;height:100%;object-fit:contain;display:none}
+.dsim-cam-wrap img.on{display:block}
+.dsim-crop-line{position:absolute;left:0;right:0;top:16.6667%;border-top:1.5px dashed rgba(255,255,255,.72);pointer-events:none;display:none}
+.dsim-crop-line.on{display:block}
+.dsim-crop-line span{position:absolute;right:8px;top:3px;font-size:10px;color:#fff;background:rgba(0,0,0,.58);padding:1px 6px;border-radius:4px}
+.dsim-steer-bar{position:relative;height:10px;border-radius:999px;background:var(--surface3);border:1px solid var(--line);overflow:hidden;margin-top:8px}
+.dsim-steer-bar::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line2)}
+.dsim-steer-fill{position:absolute;top:0;bottom:0;background:var(--ink);border-radius:999px;transition:left .08s linear,width .08s linear}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -264,6 +274,7 @@ kbd{font:inherit;border:1px solid var(--line);border-radius:4px;padding:0 5px;ba
       <select id="side-model-select" class="side-model-select">
         <option value="">— 自定义 / 未匹配 —</option>
         <option value="donkeycar_resnet">DonkeyCar · ResNet-GN（主）</option>
+        <option value="donkeycar_rgb">DonkeyCar · RGB 实景模型（新）</option>
         <option value="donkeycar_cnn">DonkeyCar · CNN（快）</option>
         <option value="donkeycar_vit">DonkeyCar · ViT-Tiny</option>
         <option value="mnist_lenet">MNIST · LeNet</option>
@@ -537,8 +548,70 @@ kbd{font:inherit;border:1px solid var(--line);border-radius:4px;padding:0 5px;ba
 
 <!-- ============ 实时驾驶 ============ -->
 <section class="page" id="page-drive">
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-h">
+      <div>
+        <h3>DonkeySim 实景 RGB 闭环 · 本机模拟器</h3>
+        <div class="hint" id="dsim-sub">使用新训练的 RGB 转向模型（3×40×64，MAE 0.0178）直接控制本机 Unity DonkeySim</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span class="badge" id="dsim-badge">未连接</span>
+        <button class="btn" id="btn-dsim-probe"><span class="sp"></span>探测模拟器</button>
+        <button class="btn primary" id="btn-dsim-start"><span class="sp"></span>启动实景闭环</button>
+        <button class="btn" id="btn-dsim-stop">紧急刹停</button>
+      </div>
+    </div>
+    <div class="row3" style="margin-bottom:12px">
+      <div class="field"><label class="f">DonkeySim 地址</label><input id="dsim-host" type="text" value="127.0.0.1"></div>
+      <div class="field"><label class="f">端口（默认 9091）</label><input id="dsim-port" type="number" value="9091" min="1" max="65535"></div>
+      <div class="field"><label class="f">赛道场景</label>
+        <select id="dsim-scene">
+          <option value="generated_road" selected>generated_road（随机道路）</option>
+          <option value="mini_monaco">mini_monaco（迷你摩纳哥）</option>
+          <option value="warehouse">warehouse（室内仓库）</option>
+          <option value="current">current（保持当前已加载赛道）</option>
+        </select>
+      </div>
+    </div>
+    <div class="row3" style="margin-bottom:12px">
+      <div class="field"><label class="f">固定油门 throttle</label><input id="dsim-throttle" type="number" step="0.02" value="0.10" min="0.02" max="1.0"></div>
+      <div class="field"><label class="f">最大控制步数</label><input id="dsim-steps" type="number" value="600" min="10" max="10000"></div>
+      <div class="field"><label class="f">最大 |CTE| 保护（0 不限）</label><input id="dsim-maxcte" type="number" step="0.5" value="0" min="0" max="50"></div>
+    </div>
+    <div class="kpis" style="margin-bottom:14px">
+      <div class="kpi"><div class="l">步数 · 耗时</div><div class="v num" id="dsim-k-step">0</div><div class="s" id="dsim-k-time">/ 600 · 0.0s</div></div>
+      <div class="kpi"><div class="l">模型预测转向</div><div class="v num" id="dsim-k-steer">0.000</div><div class="s" id="dsim-k-hit">碰撞：none</div></div>
+      <div class="kpi"><div class="l">实时 CTE</div><div class="v num" id="dsim-k-cte">0.000</div><div class="s" id="dsim-k-maxcte">最大 |CTE| 0.000</div></div>
+      <div class="kpi"><div class="l">延迟 · FPS</div><div class="v num" id="dsim-k-lat">—</div><div class="s" id="dsim-k-spd">速度 0.00 · 行驶 0.0m</div></div>
+    </div>
+    <div class="grid g-2">
+      <div>
+        <div class="card-h" style="margin-bottom:8px"><h3>原始 RGB 相机画面</h3><span class="sub">虚线下方 5/6 裁切后缩放至 3×40×64 输入模型</span></div>
+        <div class="dsim-cam-wrap">
+          <img id="dsim-cam" alt="DonkeySim 实时相机画面">
+          <div class="dsim-crop-line" id="dsim-crop-line"><span>模型视野起点 (top 1/6)</span></div>
+          <div class="empty-msg" id="em-dsim-cam">打开本机 DonkeySim（停留在选赛道界面），点击「启动实景闭环」</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--mute);margin-top:8px">
+          <span>← 左转 (-1.0)</span><span id="dsim-steer-lbl" class="num">steering = 0.000</span><span>右转 (+1.0) →</span>
+        </div>
+        <div class="dsim-steer-bar"><div class="dsim-steer-fill" id="dsim-steer-fill" style="left:50%;width:0%"></div></div>
+      </div>
+      <div class="stack" style="gap:12px">
+        <div>
+          <div class="card-h" style="margin-bottom:8px"><h3>实时 2D 行驶轨迹</h3><span class="sub" id="dsim-pos-sub">pos (0.0, 0.0) · yaw 0°</span></div>
+          <div class="empty"><canvas id="cv-dsim-traj" class="cv sm"></canvas><div class="empty-msg" id="em-dsim-traj">等待实景遥测数据</div></div>
+        </div>
+        <div>
+          <div class="card-h" style="margin-bottom:8px"><h3>转向角 &amp; CTE 实时波形</h3><div class="legend" id="lg-dsim-wave"></div></div>
+          <div class="empty"><canvas id="cv-dsim-wave" class="cv sm"></canvas><div class="empty-msg" id="em-dsim-wave">等待实景遥测数据</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="card">
-    <div class="card-h"><h3>实时驾驶 · 多 Agent 同时运行</h3>
+    <div class="card-h"><h3>合成赛道 · 多 Agent 实时驾驶（64×64 灰度模型）</h3>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <select id="sel-drive-agents" style="width:auto;padding:4px 26px 4px 8px;font-size:11.5px">
           <option value="1">1 台（单车）</option>
@@ -992,6 +1065,7 @@ function render(s){
   if(sideSel){
     sideSel.value = ({
       'donkeycar/resnet_gn': 'donkeycar_resnet',
+      'donkeycar_rgb/rgb_cnn': 'donkeycar_rgb',
       'donkeycar/cnn': 'donkeycar_cnn',
       'donkeycar/vit': 'donkeycar_vit',
       'mnist/lenet': 'mnist_lenet',
@@ -1054,7 +1128,7 @@ $('side-model-select').onchange = async e => {
     render(await api('/api/snapshot'));
     toast('已切换模型：' + (r.model_info.tag || preset));
     const driveSel = $('sel-drive-model');
-    if(driveSel && preset.indexOf('donkeycar_') === 0) driveSel.value = preset;
+    if(driveSel && preset.indexOf('donkeycar_') === 0 && Array.from(driveSel.options).some(o => o.value === preset)) driveSel.value = preset;
     if(window.MF3D && scene3d && sceneMode === 'arch3d'){ await loadSceneData(); }
   }catch(err){
     toast(err.message);
@@ -1077,7 +1151,7 @@ const PAGES = {
   lab:['原理实验室', '计算图、梯度检验、异常训练与数据预处理。'],
   runs:['运行历史', '多轮训练曲线叠加对比，并一键导出实验报告。'],
   arch3d:['架构 3D', '逐层拆解架构、三维查看权重参数、动画演示反向传播。'],
-  drive:['实时驾驶', '多台 Agent 同时闭环驾驶，并实时评估 DonkeyCar 测试集。'],
+  drive:['实时驾驶', '连接本机 DonkeySim 跑真实 RGB 闭环，或运行多台 Agent 合成赛道仿真。'],
   bench:['对比总览', '三架构同协议评测与 PyTorch 基准。'],
 };
 let padInited = false, labInited = false, sceneInited = false;
@@ -1117,7 +1191,7 @@ function setTheme(t){
     CHARTS.forEach(c => c.render()); drawPreview();
     if(lastSnap) render(lastSnap);
     redrawSim(); redrawAnom(); renderBenchCharts(); renderRuns();
-    drawDriveMap(); drawLiveScatter();
+    drawDriveMap(); drawLiveScatter(); drawDsimTraj(); drawDsimWave();
     if(window.MF3D && drive3d){ drive3d.applyTheme(); }
     if(window.MF3D && scene3d){ MF3D.applyTheme(scene3d); loadSceneData(); }
   }, 30);
@@ -1780,6 +1854,168 @@ $('btn-live-start').onclick = () => busy($('btn-live-start'), async () => {
   toast('实时评估已启动');
 });
 $('btn-live-stop').onclick = () => busy(null, async () => { await api('/api/live/stop', {}); toast('实时评估已停止'); });
+
+/* ======================================================================
+   DonkeySim 本机 RGB 实景闭环看板
+   ====================================================================== */
+let dsimTrail = [], dsimWave = [], dsimLast = null;
+const DSIM_REASON_CN = {
+  '': '',
+  'steps_limit': '达到最大步数',
+  'stopped': '已手动刹停',
+  'cte_exceeded': '超出 |CTE| 保护阈值',
+  'error': '连接或运行异常',
+};
+function dsimReasonText(r){
+  if(!r) return '';
+  if(r.indexOf('collision:') === 0) return '发生碰撞（' + r.slice(10) + '）';
+  return DSIM_REASON_CN[r] || r;
+}
+function drawDsimTraj(){
+  const c = $('cv-dsim-traj'); if(!c || !c.isConnected || c.offsetParent === null) return;
+  const {ctx, w, h} = fit(c);
+  if(!dsimTrail.length) return;
+  const xs = dsimTrail.map(p => p.x), zs = dsimTrail.map(p => p.z);
+  let x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs);
+  const span = Math.max(x1 - x0, z1 - z0, 1.5);
+  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  const pad = 18, sc = Math.min((w - pad * 2) / span, (h - pad * 2) / span);
+  const X = v => w / 2 + (v - cx) * sc;
+  const Y = v => h / 2 - (v - cz) * sc;
+  ctx.strokeStyle = cssv('--line'); ctx.lineWidth = 1;
+  ctx.strokeRect(8.5, 8.5, w - 17, h - 17);
+  ctx.strokeStyle = cssv('--c3'); ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.beginPath();
+  dsimTrail.forEach((p, i) => i ? ctx.lineTo(X(p.x), Y(p.z)) : ctx.moveTo(X(p.x), Y(p.z)));
+  ctx.stroke();
+  const s = dsimTrail[0], e = dsimTrail[dsimTrail.length - 1];
+  ctx.beginPath(); ctx.arc(X(s.x), Y(s.z), 3.5, 0, 7); ctx.fillStyle = cssv('--mute'); ctx.fill();
+  ctx.beginPath(); ctx.arc(X(e.x), Y(e.z), 4.5, 0, 7); ctx.fillStyle = cssv('--c1'); ctx.fill();
+}
+function drawDsimWave(){
+  const c = $('cv-dsim-wave'); if(!c || !c.isConnected || c.offsetParent === null) return;
+  const {ctx, w, h} = fit(c);
+  if(!dsimWave.length) return;
+  const pad = {l:36, r:12, t:10, b:18}, pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
+  const vals = dsimWave.flatMap(p => [p.steer, p.cte]);
+  const hi = Math.max(1.0, ...vals.map(v => Math.abs(v)));
+  const X = i => pad.l + (dsimWave.length <= 1 ? pw / 2 : pw * i / (dsimWave.length - 1));
+  const Y = v => pad.t + ph * (0.5 - 0.46 * (v / hi));
+  ctx.font = FONT; ctx.textBaseline = 'middle'; ctx.textAlign = 'right';
+  [-hi, 0, hi].forEach(t => {
+    const y = Y(t);
+    ctx.strokeStyle = t === 0 ? cssv('--line2') : cssv('--line');
+    ctx.setLineDash(t === 0 ? [4, 4] : []);
+    ctx.beginPath(); ctx.moveTo(pad.l, Math.round(y) + .5); ctx.lineTo(w - pad.r, Math.round(y) + .5); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = cssv('--mute'); ctx.fillText(t.toFixed(1), pad.l - 6, y);
+  });
+  const plot = (key, col) => {
+    ctx.strokeStyle = col; ctx.lineWidth = 1.8; ctx.beginPath();
+    dsimWave.forEach((p, i) => i ? ctx.lineTo(X(i), Y(p[key])) : ctx.moveTo(X(i), Y(p[key])));
+    ctx.stroke();
+  };
+  plot('steer', cssv('--c1'));
+  plot('cte', cssv('--c2'));
+}
+new ResizeObserver(() => { drawDsimTraj(); drawDsimWave(); }).observe($('cv-dsim-traj'));
+legend($('lg-dsim-wave'), [{name:'转向 steering', color:cssv('--c1')}, {name:'横向误差 CTE', color:cssv('--c2')}]);
+
+function updateDsimUI(d){
+  dsimLast = d;
+  const badge = $('dsim-badge');
+  const stMap = {
+    idle: ['未连接', ''],
+    connecting: ['连接中…', 'warn'],
+    running: ['实景闭环运行中', 'good'],
+    completed: ['闭环完成', ''],
+    stopped: ['已刹停', ''],
+    error: ['连接/运行异常', 'bad'],
+  };
+  const info = stMap[d.state] || [d.state || '—', ''];
+  badge.textContent = info[0];
+  badge.className = 'badge' + (info[1] ? ' ' + info[1] : '');
+
+  if(d.error){
+    $('dsim-sub').textContent = '异常：' + d.error;
+  } else if(d.reason){
+    $('dsim-sub').textContent = `场景 ${d.scene || '—'} · 结束原因：${dsimReasonText(d.reason)}`;
+  } else if(d.state === 'running'){
+    $('dsim-sub').textContent = `场景 ${d.scene || '—'} · RGB 模型（3×40×64）实时控制中`;
+  }
+
+  $('dsim-k-step').textContent = d.step ?? 0;
+  $('dsim-k-time').textContent = `/ ${d.max_steps || 600} · ${(d.elapsed_s ?? 0).toFixed(1)}s`;
+  const st = Number(d.steering ?? 0);
+  $('dsim-k-steer').textContent = (st >= 0 ? '+' : '') + st.toFixed(3);
+  $('dsim-k-hit').textContent = '碰撞：' + (d.hit || 'none');
+  $('dsim-k-cte').textContent = Number(d.cte ?? 0).toFixed(3);
+  $('dsim-k-maxcte').textContent = '最大 |CTE| ' + Number(d.max_abs_cte ?? 0).toFixed(3);
+  $('dsim-k-lat').textContent = d.infer_ms != null ? `${Number(d.infer_ms).toFixed(1)} ms · ${Number(d.fps ?? 0).toFixed(1)} fps` : '—';
+  $('dsim-k-spd').textContent = `速度 ${Number(d.speed ?? 0).toFixed(2)} · 行驶 ${Number(d.travel ?? 0).toFixed(1)}m`;
+
+  $('dsim-steer-lbl').textContent = `steering = ${(st >= 0 ? '+' : '')}${st.toFixed(3)}`;
+  const pct = Math.min(50, Math.abs(st) * 50);
+  const fill = $('dsim-steer-fill');
+  fill.style.left = (st >= 0 ? 50 : 50 - pct) + '%';
+  fill.style.width = pct + '%';
+
+  if(d.image_b64){
+    const img = $('dsim-cam');
+    img.src = 'data:image/jpeg;base64,' + d.image_b64;
+    img.classList.add('on');
+    $('dsim-crop-line').classList.add('on');
+    $('em-dsim-cam').classList.add('hide');
+  }
+  if(d.step > 0 && d.pos_x != null && d.pos_z != null){
+    $('dsim-pos-sub').textContent = `pos (${Number(d.pos_x).toFixed(2)}, ${Number(d.pos_z).toFixed(2)}) · yaw ${Number(d.yaw ?? 0).toFixed(1)}°`;
+    dsimTrail.push({x: Number(d.pos_x), z: Number(d.pos_z)});
+    if(dsimTrail.length > 800) dsimTrail.shift();
+    dsimWave.push({steer: st, cte: Number(d.cte ?? 0)});
+    if(dsimWave.length > 180) dsimWave.shift();
+    $('em-dsim-traj').classList.add('hide');
+    $('em-dsim-wave').classList.add('hide');
+    drawDsimTraj();
+    drawDsimWave();
+  }
+}
+
+$('btn-dsim-probe').onclick = () => busy($('btn-dsim-probe'), async () => {
+  const host = encodeURIComponent($('dsim-host').value.trim() || '127.0.0.1');
+  const port = numOf('dsim-port', 9091);
+  const r = await api(`/api/donkeysim/scenes?host=${host}&port=${port}`);
+  $('dsim-sub').textContent = r.message || '';
+  const badge = $('dsim-badge');
+  badge.textContent = r.connected ? '模拟器在线' : '未检测到模拟器';
+  badge.className = 'badge ' + (r.connected ? 'good' : 'warn');
+  if(r.scenes && r.scenes.length){
+    const sel = $('dsim-scene'), prev = sel.value;
+    const opts = r.scenes.map(s => `<option value="${s}">${s}</option>`).join('')
+      + '<option value="current">current（保持当前已加载赛道）</option>';
+    sel.innerHTML = opts;
+    if(r.scenes.includes(prev) || prev === 'current') sel.value = prev;
+  }
+  toast(r.connected ? '已检测到本机 DonkeySim' : '未检测到 DonkeySim（请先启动模拟器）');
+});
+
+$('btn-dsim-start').onclick = () => busy($('btn-dsim-start'), async () => {
+  dsimTrail = []; dsimWave = [];
+  await api('/api/donkeysim/start', {
+    host: $('dsim-host').value.trim() || '127.0.0.1',
+    port: numOf('dsim-port', 9091),
+    scene: $('dsim-scene').value,
+    throttle: numOf('dsim-throttle', 0.10),
+    max_steps: numOf('dsim-steps', 600),
+    max_cte: numOf('dsim-maxcte', 0),
+  });
+  toast('已启动 DonkeySim 实景 RGB 闭环');
+});
+$('btn-dsim-stop').onclick = () => busy(null, async () => {
+  await api('/api/donkeysim/stop', {});
+  toast('已发送紧急刹停指令');
+});
+es.addEventListener('donkeysim', ev => {
+  try{ updateDsimUI(JSON.parse(ev.data)); }catch(e){}
+});
 
 /* SSE 事件：实时评估与车队遥测 */
 es.addEventListener('live', ev => {
